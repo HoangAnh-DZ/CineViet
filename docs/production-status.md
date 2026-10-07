@@ -12,8 +12,9 @@ Main task: FAIL / blocked on production database configuration. This document di
 | Watch progress / Continue watching / Favorites | PASS locally | Server user scoping, bounds, idempotent unique writes, native-player save/resume and browser reload. |
 | Coin / Daily check-in / VIP / Wallet schemas | PASS locally | Migration applied and constraints tested. Not migrated to Neon. |
 | Real-money actions enabled | NO | Cash actions and VIP purchase disabled; legacy demo APIs return 410. |
-| GitHub repository | CREATED | https://github.com/HoangAnh-DZ/cinevjet (private). Push status is finalized after commit. |
+| GitHub repository / Push | PASS | https://github.com/HoangAnh-DZ/cinevjet (private); main branch pushed successfully. |
 | Vercel project created | PASS | `cinevjet`, `prj_pS99SOdXtn13R4CD2XyIvmBgimCA`. |
+| Vercel GitHub connection | FAIL | Link operation returns HTTP 403 for team `hoanganh-dzs-projects`; no authenticated Vercel CLI fallback exists on this machine. |
 | Vercel Production env | INCOMPLETE | AUTH_SECRET and NEXT_PUBLIC_APP_URL configured; DATABASE_URL is missing. No values recorded here. |
 | Vercel production deploy | FAIL / not started | No deployment is claimed without the production database. |
 | Vercel runtime verification | FAIL / not run | There is no completed production deployment. |
@@ -27,7 +28,7 @@ Automatic approval review rejected a requested Vercel SSO protection change beca
 
 ## Exact remaining dependency
 
-Owner must provide a Neon Project ID that the connected Neon tool can access, or configure DATABASE_URL privately in `.env.local` / Vercel Production. Do not paste credentials into chat. Once available: inspect the target branch, run the additive migration and seed, configure the missing Production env, connect GitHub, deploy the passing commit to Production, and run the same runtime verification at its assigned production origin.
+Owner must provide a Neon Project ID that the connected Neon tool can access, or configure DATABASE_URL privately in `.env.local` / Vercel Production. The Vercel connection also needs permission for the Git-link operation in team `hoanganh-dzs-projects`; the current operation returns HTTP 403. Do not paste credentials into chat. Once available: inspect the target branch, run the additive migration and seed, configure the missing Production env, connect GitHub, deploy the passing commit to Production, and run the same runtime verification at its assigned production origin.
 
 ## Files changed for integration
 
