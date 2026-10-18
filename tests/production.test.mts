@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { readFile } from "node:fs/promises";
+import { readFile, readdir } from "node:fs/promises";
 import { PGlite } from "@electric-sql/pglite";
 import { drizzle } from "drizzle-orm/pglite";
 import { sql } from "drizzle-orm";
@@ -10,6 +10,8 @@ import {
   resolveSession,
   invalidateSession,
   throttleAuth,
+  throttleRegistration,
+  registrationEmailIdentity,
   cookieOptions,
 } from "../src/server/auth-core";
 import {
@@ -33,7 +35,11 @@ import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 process.env.AUTH_SECRET = "test-secret-only-never-use-in-production-123";
 process.env.NEXT_PUBLIC_APP_URL = "http://localhost:3000";
 const postgres = new PGlite();
-await postgres.exec(await readFile("database/migrations/0001_production.sql", "utf8"));
+for (const migration of (await readdir("database/migrations"))
+  .filter((name) => name.endsWith(".sql"))
+  .sort()) {
+  await postgres.exec(await readFile("database/migrations/" + migration, "utf8"));
+}
 await postgres.exec(await readFile("database/seed.sql", "utf8"));
 const db = drizzle(postgres);
 (globalThis as typeof globalThis & { cinevjetDatabase: NodePgDatabase }).cinevjetDatabase =
@@ -74,7 +80,13 @@ test("production repositories on isolated PostgreSQL", async (t) => {
       ).rows[0];
       assert.match(row.password_hash, /^\$2[aby]\$12\$/);
       assert.notEqual(row.password_hash, credentials.password);
-      assert.deepEqual(await balances(account.user.id), { cash: 0, available: 0, coins: 0 });
+      assert.deepEqual(await balances(account.user.id), {
+        cash: 0,
+        available: 0,
+        coins: 0,
+        coins_total: 0,
+        coins_reserved: 0,
+      });
     },
   );
   await t.test("duplicate email is rejected without creating another account", async () => {
@@ -139,6 +151,76 @@ test("production repositories on isolated PostgreSQL", async (t) => {
     await throttleAuth("test-limiter", 1);
     await assert.rejects(throttleAuth("test-limiter", 1), /Quá nhiều/);
   });
+  await t.test(
+    "Gmail aliases cannot create extra accounts; original login remains valid",
+    async () => {
+      const original = { ...credentials, email: "qa.alias@gmail.com" };
+      const gmailAccount = await register(original);
+      for (const email of [
+        "qaalias@gmail.com",
+        "qa.alias+bonus@gmail.com",
+        "qaalias@googlemail.com",
+      ]) {
+        await assert.rejects(register({ ...original, email }), /Email đã được sử dụng/);
+      }
+      assert.equal((await login(original)).user.id, gmailAccount.user.id);
+      assert.equal((await login(original)).user.email, "qa.alias@gmail.com");
+      assert.equal(
+        (
+          await postgres.query<{ count: number }>(
+            "SELECT count(*)::int FROM cinevjet.users WHERE email LIKE '%gmail.com' OR email LIKE '%googlemail.com'",
+          )
+        ).rows[0].count,
+        1,
+      );
+      assert.equal(registrationEmailIdentity(" QA.Alias+bonus@GMAIL.COM "), "qaalias@gmail.com");
+      assert.equal(
+        registrationEmailIdentity("qa.alias+bonus@company.com"),
+        "qa.alias+bonus@company.com",
+      );
+    },
+  );
+  await t.test("registration email aliases share a strict limit across different IPs", async () => {
+    for (let i = 0; i < 3; i++) {
+      await throttleRegistration(`limit.email+${i}@gmail.com`, `email-limit-ip-${i}`);
+    }
+    await assert.rejects(throttleRegistration("limitemail@googlemail.com", "another-ip"), /1 giờ/);
+  });
+  await t.test(
+    "registration IP cap applies across email addresses and does not block login",
+    async () => {
+      for (let i = 0; i < 5; i++) {
+        await throttleRegistration(`ip-limit-${i}@example.com`, "registration-limit-ip");
+      }
+      await assert.rejects(
+        throttleRegistration("ip-limit-next@example.com", "registration-limit-ip"),
+        /1 giờ/,
+      );
+      await throttleAuth("ip:registration-limit-ip", 60);
+      assert.equal((await login(credentials)).user.id, account.user.id);
+    },
+  );
+  await t.test(
+    "expired hourly registration cap resets while daily cap remains enforced",
+    async () => {
+      for (let i = 0; i < 5; i++) {
+        await throttleRegistration(`daily-first-${i}@example.com`, "registration-daily-ip");
+      }
+      await postgres.exec(
+        "UPDATE cinevjet.auth_limits SET window_start=now()-interval '61 minutes' WHERE attempts=5",
+      );
+      for (let i = 0; i < 5; i++) {
+        await throttleRegistration(`daily-second-${i}@example.com`, "registration-daily-ip");
+      }
+      await postgres.exec(
+        "UPDATE cinevjet.auth_limits SET window_start=now()-interval '61 minutes' WHERE attempts=5",
+      );
+      await assert.rejects(
+        throttleRegistration("daily-next@example.com", "registration-daily-ip"),
+        /24 giờ/,
+      );
+    },
+  );
   await t.test("cross-origin and absent-origin mutations rejected", () => {
     assert.throws(() =>
       checkOrigin(
@@ -154,6 +236,80 @@ test("production repositories on isolated PostgreSQL", async (t) => {
       }),
     );
   });
+  await t.test(
+    "verified project aliases and current deployment work; foreign origins stay blocked",
+    () => {
+      const oldVercel = process.env.VERCEL;
+      const oldOrigins = process.env.CINEVJET_PRODUCTION_ORIGINS;
+      const oldUrl = process.env.VERCEL_URL;
+      process.env.VERCEL = "1";
+      const aliases = [
+        "https://cine-vjet.cyou",
+        "https://www.cine-vjet.cyou",
+        "https://cinevjet.vercel.app",
+      ];
+      process.env.CINEVJET_PRODUCTION_ORIGINS = JSON.stringify(aliases);
+      process.env.VERCEL_URL = "cinevjet-qa-test.vercel.app";
+      try {
+        checkOrigin(
+          new Request("https://cinevjet-qa-test.vercel.app/api/auth/register-check", {
+            headers: { origin: "https://cinevjet-qa-test.vercel.app" },
+          }),
+        );
+        for (const origin of aliases) {
+          for (const action of ["login", "register", "register-check", "register-code", "logout"]) {
+            checkOrigin(new Request(`${origin}/api/auth/${action}`, { headers: { origin } }));
+          }
+        }
+        for (const origin of [
+          "null",
+          "https://cine-vjet.cyou.attacker.invalid",
+          "https://attacker.cine-vjet.cyou",
+          "http://cine-vjet.cyou",
+          "https://cine-vjet.cyou:444",
+          "https://cinevjet.cyou.attacker.invalid",
+          "https://attacker.cinevjet.cyou",
+          "http://cinevjet.cyou",
+          "https://cinevjet.cyou:444",
+          "https://attacker.vercel.app",
+          "http://cinevjet.vercel.app",
+          "https://cinevjet.vercel.app.attacker.invalid",
+          "https://cinevjet.vercel.app:444",
+        ]) {
+          assert.throws(() =>
+            checkOrigin(
+              new Request("https://cinevjet.vercel.app/api/auth/login", {
+                headers: {
+                  origin,
+                  host: "cinevjet.vercel.app",
+                  "x-forwarded-host": "cinevjet.vercel.app",
+                },
+              }),
+            ),
+          );
+        }
+        assert.throws(() => checkOrigin(new Request("https://cinevjet.vercel.app/api/auth/login")));
+        assert.throws(() =>
+          checkOrigin(
+            new Request("https://cinevjet-qa-test.vercel.app/api/auth/register-check", {
+              headers: {
+                origin: "https://attacker.vercel.app",
+                host: "attacker.vercel.app",
+                "x-forwarded-host": "attacker.vercel.app",
+              },
+            }),
+          ),
+        );
+      } finally {
+        if (oldOrigins === undefined) delete process.env.CINEVJET_PRODUCTION_ORIGINS;
+        else process.env.CINEVJET_PRODUCTION_ORIGINS = oldOrigins;
+        if (oldVercel === undefined) delete process.env.VERCEL;
+        else process.env.VERCEL = oldVercel;
+        if (oldUrl === undefined) delete process.env.VERCEL_URL;
+        else process.env.VERCEL_URL = oldUrl;
+      }
+    },
+  );
   await t.test("home sections query published database catalog", async () => {
     const home = await homeCatalog();
     assert.equal(home.featured.length, 3);

@@ -1,4 +1,5 @@
 import type { CheckInDay, Entitlement, VipPlan, VipSubscription } from "./models.ts";
+import { withdrawalFee } from "./product-policy.ts";
 export const CHECK_IN_REWARDS = [10, 15, 20, 25, 30, 40, 60] as const;
 export const CHECK_IN_TIMEZONE = "Asia/Ho_Chi_Minh";
 export function calendarDay(now: Date, timezone = CHECK_IN_TIMEZONE): string {
@@ -27,9 +28,15 @@ export function parseVnd(value: string, minimum = 50_000): number {
     throw new Error(`Số tiền từ ${minimum.toLocaleString("vi-VN")} đ đến 100.000.000 đ.`);
   return amount;
 }
-export function withdrawalQuote(amount: number, available: number, fee = 3_000) {
-  if (!Number.isSafeInteger(amount) || amount < 50_000 || amount > available || amount <= fee)
-    throw new Error("Số tiền rút vượt số dư hoặc dưới 50.000 đ.");
+export function withdrawalQuote(amount: number, available: number, fee = withdrawalFee(amount)) {
+  if (
+    !Number.isSafeInteger(amount) ||
+    amount < 35_000 ||
+    amount > 100000000 ||
+    amount > available ||
+    amount <= fee
+  )
+    throw new Error("Số tiền rút vượt số dư hoặc dưới 35.000 đ.");
   return { amount, fee, net_amount: amount - fee };
 }
 export function deriveEntitlements(

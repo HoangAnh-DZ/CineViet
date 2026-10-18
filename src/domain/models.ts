@@ -23,7 +23,15 @@ export interface Movie {
   release_year: number;
   country: string;
   duration: number;
-  rating: number;
+  rating: number | null;
+  language?: string;
+  duration_seconds?: number;
+  license_name?: string;
+  license_url?: string;
+  license_source_url?: string;
+  source_page_url?: string;
+  attribution?: string;
+  poster_attribution?: string;
   type: MovieType;
   vip_required: boolean;
   status: "PUBLISHED" | "DRAFT" | "HIDDEN";
@@ -42,6 +50,7 @@ export interface Episode {
   season: number;
   episode_number: number;
   title: string;
+  description?: string;
   duration: number;
   thumbnail: string;
   release_date: string;
@@ -50,9 +59,19 @@ export interface VideoSource {
   id: ID;
   movie_id: ID;
   episode_id?: ID;
-  protocol: "MP4" | "HLS" | "DASH";
+  protocol: "MP4" | "WEBM" | "HLS" | "DASH";
   url: string;
-  quality: "720p" | "1080p" | "AUTO";
+  quality: "240p" | "360p" | "480p" | "720p" | "1080p" | "AUTO";
+  bitrate_bps?: number;
+  credit?: Pick<
+    Movie,
+    | "license_name"
+    | "license_url"
+    | "license_source_url"
+    | "source_page_url"
+    | "attribution"
+    | "poster_attribution"
+  >;
   mime_type: string;
   required_entitlement?: Entitlement;
 }
@@ -85,12 +104,14 @@ export interface CoinWallet {
   user_id: ID;
   asset: "COIN";
   balance: number;
+  reserved: number;
+  available: number;
 }
 export interface CoinLedgerEntry {
   id: ID;
   wallet_id: ID;
   amount: number;
-  reason: "CHECK_IN" | "MISSION" | "EXCHANGE";
+  reason: "CHECK_IN" | "MISSION" | "EXCHANGE" | `DAILY_CHECKIN_${RewardTier}`;
   idempotency_key: string;
   created_at: string;
 }
@@ -107,6 +128,18 @@ export interface DailyCheckInRecord {
   timezone: string;
   cycle_day: number;
   ledger_id: ID;
+}
+export interface DailyMission {
+  id: string;
+  target_seconds: number;
+  watched_seconds: number;
+  reward: number;
+  status: "IN_PROGRESS" | "AVAILABLE" | "CLAIMED";
+}
+export interface DailyMissionsState {
+  calendar_date: string;
+  timezone: "Asia/Ho_Chi_Minh";
+  missions: DailyMission[];
 }
 export interface CashWallet {
   id: ID;
@@ -154,7 +187,20 @@ export interface WalletLedgerEntry {
   created_at: string;
 }
 export interface VipPlan {
-  id: "FREE" | "VIP_MONTHLY" | "VIP_QUARTERLY" | "VIP_YEARLY";
+  id:
+    | "FREE"
+    | "VIP_BASIC"
+    | "VIP_PLUS"
+    | "VIP_PREMIUM"
+    | "VIP_1"
+    | "VIP_2"
+    | "VIP_3"
+    | "VIP_4"
+    | "VIP_5"
+    | "VIP_6"
+    | "VIP_MONTHLY"
+    | "VIP_QUARTERLY"
+    | "VIP_YEARLY";
   name: string;
   price: MoneyVnd;
   duration_days: number;
@@ -184,4 +230,42 @@ export interface RewardsSnapshot {
   ledger: CoinLedgerEntry[];
   calendar_date: string;
   timezone: string;
+}
+export type RewardTier =
+  | "FREE"
+  | "VIP_BASIC"
+  | "VIP_PLUS"
+  | "VIP_PREMIUM"
+  | "VIP_1"
+  | "VIP_2"
+  | "VIP_3"
+  | "VIP_4"
+  | "VIP_5"
+  | "VIP_6";
+export interface VipRewardPlan extends VipPlan {
+  tier: RewardTier;
+  rewards: number[];
+  total: number;
+  difference: number;
+  mission_count: number;
+  mission_reward: number;
+  commission_total: number;
+  total_return: number;
+  additional_amount: number;
+  total_videos: number;
+}
+export interface RewardsState extends RewardsSnapshot {
+  membership: { name: string; expires_at: string } | null;
+  reward_tier: RewardTier;
+  reward_name: string;
+  cycle: {
+    id: string;
+    tier: RewardTier;
+    current_day: number;
+    status: "ACTIVE" | "COMPLETED" | "EXPIRED" | "CANCELLED";
+  } | null;
+  total: number;
+  enabled: boolean;
+  claimed_today: boolean;
+  coin_value_vnd: 1;
 }

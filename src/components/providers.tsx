@@ -11,6 +11,7 @@ import {
 import type { Entitlement, Movie, User, WatchProgress } from "@/domain/models";
 import { requestJson } from "@/services/client";
 interface AccountState {
+  savedShortIds: string[];
   user: User | null;
   favoriteMovies: Movie[];
   progress: WatchProgress[];
@@ -18,6 +19,8 @@ interface AccountState {
   entitlements: Entitlement[];
 }
 interface AppState extends AccountState {
+  refreshAccount: () => Promise<void>;
+  toggleSavedShort: (id: string) => Promise<void>;
   favorites: string[];
   toggleFavorite: (id: string) => void;
   saveProgress: (p: WatchProgress) => void;
@@ -26,6 +29,7 @@ interface AppState extends AccountState {
   hydrated: boolean;
 }
 const empty: AccountState = {
+  savedShortIds: [],
   user: null,
   favoriteMovies: [],
   progress: [],
@@ -101,6 +105,34 @@ export function AppProvider({ children }: { children: ReactNode }) {
     },
     [refresh, toast],
   );
+  const toggleSavedShort = useCallback(
+    async (id: string) => {
+      if (!stateRef.current.user) {
+        toast("Đăng nhập để lưu video vào Danh sách.");
+        return;
+      }
+      const key = "short:" + id;
+      if (busy.current.has(key)) return;
+      busy.current.add(key);
+      const expected = version.current,
+        saved = !stateRef.current.savedShortIds.includes(id);
+      try {
+        await requestJson(`/api/library/shorts/${encodeURIComponent(id)}`, {
+          method: "PUT",
+          body: JSON.stringify({ saved }),
+        });
+        if (expected === version.current) {
+          await refresh();
+          toast(saved ? "Đã lưu vào Danh sách" : "Đã bỏ lưu video");
+        }
+      } catch (e) {
+        toast((e as Error).message);
+      } finally {
+        busy.current.delete(key);
+      }
+    },
+    [refresh, toast],
+  );
   const saveProgress = useCallback(
     async (item: WatchProgress) => {
       if (!stateRef.current.user) return;
@@ -142,6 +174,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
         ...state,
         favorites: state.favoriteMovies.map((m) => m.id),
         toggleFavorite,
+        toggleSavedShort,
+        refreshAccount: refresh,
         saveProgress,
         setUser,
         toast,

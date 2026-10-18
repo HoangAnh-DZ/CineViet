@@ -2,32 +2,48 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  House,
   Compass,
+  SquarePlay,
   Gift,
-  WalletMinimal,
-  UserRound,
+  Bookmark,
+  CircleUserRound,
   Search,
-  Play,
   Settings,
 } from "lucide-react";
 import { useApp } from "./providers";
+import { mainTabs, activeMainTab } from "@/domain/navigation";
+import Image from "next/image";
+import type { User } from "@/domain/models";
+import { BrandLogo } from "./brand-logo";
 export function Brand({ vertical = false }: { vertical?: boolean }) {
   return (
-    <Link href="/" className={`brand ${vertical ? "vertical" : ""}`} aria-label="Cinema Home">
-      <span className="brand-mark">
-        <Play size={18} fill="currentColor" />
-      </span>
-      <span>
-        CIN<span className="brand-e">E</span>MA
-      </span>
+    <Link
+      href="/explore"
+      className={`brand ${vertical ? "vertical" : ""}`}
+      aria-label="CineVjet · Khám phá"
+    >
+      <BrandLogo variant={vertical ? "full" : "compact"} priority />
     </Link>
   );
 }
-export function Avatar({ large = false }: { large?: boolean }) {
+export function Avatar({ large = false, account }: { large?: boolean; account?: User }) {
+  const { user } = useApp();
+  const current = account || user;
   return (
     <div className={`avatar ${large ? "large" : ""}`}>
-      <img src="/images/avatar.webp" alt="Ảnh đại diện" />
+      {current?.avatar ? (
+        <Image
+          src={current.avatar}
+          alt="Ảnh đại diện"
+          width={large ? 64 : 32}
+          height={large ? 64 : 32}
+          unoptimized={current.avatar.startsWith("https://")}
+        />
+      ) : (
+        <span aria-label={`Ảnh đại diện ${current?.username || "CineVjet"}`}>
+          {(current?.username || "C").slice(0, 1).toUpperCase()}
+        </span>
+      )}
     </div>
   );
 }
@@ -39,23 +55,19 @@ export function AppHeader() {
         <Link href="/search" className="icon-button" aria-label="Tìm kiếm">
           <Search size={22} />
         </Link>
-        <Link href="/profile" aria-label="Cá nhân">
+        <Link href="/profile" className="icon-button" aria-label="Của tôi">
           <Avatar />
         </Link>
       </div>
     </header>
   );
 }
-const tabs = [
-  { href: "/", label: "Home", icon: House },
-  { href: "/explore", label: "Khám phá", icon: Compass },
-  { href: "/rewards", label: "Phần thưởng", icon: Gift },
-  { href: "/wallet", label: "Ví", icon: WalletMinimal },
-  { href: "/profile", label: "Cá nhân", icon: UserRound },
-];
+const tabIcons = [Compass, SquarePlay, Gift, Bookmark, CircleUserRound];
 export function BottomNavigation() {
   const pathname = usePathname();
   if (
+    pathname === "/admin" ||
+    pathname.startsWith("/admin/") ||
     pathname === "/login" ||
     pathname === "/register" ||
     pathname === "/wallet/deposit" ||
@@ -64,50 +76,73 @@ export function BottomNavigation() {
     return null;
   return (
     <nav className="bottom-nav" aria-label="Điều hướng chính">
-      {tabs.map(({ href, label, icon: Icon }) => {
-        const active =
-          href === "/"
-            ? pathname === "/"
-            : pathname.startsWith(href) || (href === "/explore" && pathname === "/search");
-        return (
-          <Link
-            key={href}
-            href={href}
-            aria-current={active ? "page" : undefined}
-            className={active ? "active" : ""}
-          >
-            <Icon
-              size={24}
-              strokeWidth={2}
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              aria-hidden="true"
-            />
-            <span>{label}</span>
-          </Link>
-        );
-      })}
+      <div className="desktop-nav-brand">
+        <Brand />
+      </div>
+      <div className="main-nav-tabs">
+        {mainTabs.map(({ href, label }, index) => {
+          const Icon = tabIcons[index];
+          const active = activeMainTab(pathname) === href;
+          return (
+            <Link
+              key={href}
+              href={href}
+              aria-current={active ? "page" : undefined}
+              className={`nav-tab nav-tab-${index} ${active ? "active" : ""}`}
+            >
+              <span className="nav-icon">
+                <Icon
+                  size={24}
+                  strokeWidth={active ? 2.4 : 2}
+                  fill={active && (index === 2 || index === 3) ? "currentColor" : "none"}
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  aria-hidden="true"
+                />
+              </span>
+              <span className="nav-label">{label}</span>
+            </Link>
+          );
+        })}
+      </div>
+      <Link href="/search" className="desktop-nav-search" aria-label="Tìm kiếm phim">
+        <Search size={20} />
+        <span>Tìm phim</span>
+      </Link>
     </nav>
   );
 }
-export function ProfileHeading({ onSettings }: { onSettings?: () => void }) {
+export function ProfileHeading({
+  onSettings,
+  initialUser,
+  membershipName,
+}: {
+  onSettings?: () => void;
+  initialUser?: User;
+  membershipName?: string | null;
+}) {
   const { user, entitlements } = useApp();
+  const displayUser = user || initialUser;
   return (
     <div className="profile-heading">
       <div className="section-heading">
-        <h1>Cá nhân</h1>
+        <h1>Của tôi</h1>
         <button className="icon-button" aria-label="Cài đặt" onClick={onSettings}>
           <Settings size={20} />
         </button>
       </div>
       <div className="profile-info">
-        <Avatar large />
+        <Avatar large account={displayUser} />
         <div>
-          <h2>{user?.username ?? "Khách"}</h2>
-          <p>{user?.email ?? "Đăng nhập để lưu phim yêu thích"}</p>
-          <small>ID: {user?.id.slice(0, 8)}</small>
+          <h2>{displayUser?.username ?? "Khách"}</h2>
+          <p>{displayUser?.email ?? "Đăng nhập để lưu phim yêu thích"}</p>
+          <small>ID: {displayUser?.id.slice(0, 8)}</small>
         </div>
-        <span className="membership">{entitlements.includes("VIP_BADGE") ? "VIP" : "FREE"}</span>
+        <span className="membership">
+          {(membershipName === undefined ? entitlements.includes("VIP_BADGE") : !!membershipName)
+            ? "VIP"
+            : "FREE"}
+        </span>
       </div>
     </div>
   );

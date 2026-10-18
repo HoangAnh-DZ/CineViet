@@ -155,27 +155,26 @@ small {
   letter-spacing: 0.1px;
   font-weight: 750;
 }
-.brand-e {
-  color: var(--primary);
+.brand-logo {
+  display: block;
+  flex-shrink: 0;
+  max-width: 100%;
+  height: auto;
+  object-fit: contain;
 }
-.brand-mark {
-  color: white;
-  background: var(--primary);
-  width: 24px;
-  height: 29px;
-  border-radius: 6px 11px 11px 6px;
-  display: grid;
-  place-items: center;
-  clip-path: polygon(0 0, 35% 0, 100% 42%, 100% 58%, 35% 100%, 0 100%);
+.brand-logo--compact {
+  width: 164px;
+}
+.brand-logo--full {
+  width: 260px;
+}
+.brand-logo--icon {
+  width: 44px;
 }
 .brand.vertical {
   flex-direction: column;
   gap: 9px;
   font-size: 25px;
-}
-.brand.vertical .brand-mark {
-  width: 33px;
-  height: 39px;
 }
 .header-links {
   display: flex;
@@ -1447,6 +1446,27 @@ input::placeholder {
 .auth-field {
   margin-bottom: 17px;
 }
+.verification-code-box {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 8px;
+  padding: 10px 12px;
+  border: 1px dashed var(--primary);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--primary) 10%, transparent);
+}
+.verification-code-box img {
+  display: block;
+  width: 240px;
+  height: 72px;
+  border-radius: 8px;
+}
+.reward-code-panel { margin-top: 18px; }
+.reward-code-form { display: flex; gap: 10px; align-items: center; }
+.reward-code-form .field { flex: 1; text-transform: uppercase; }
+@media (max-width: 520px) { .reward-code-form { flex-direction: column; align-items: stretch; } }
 .auth-field label {
   display: block;
   color: var(--secondary);

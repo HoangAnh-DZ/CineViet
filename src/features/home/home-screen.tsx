@@ -38,7 +38,7 @@ export function HomeScreen({
             />
           ) : null}
         </section>
-        <MovieRow title="Đang thịnh hành" items={data.trending} query="?sort=rating" />
+        <MovieRow title="Phim tuyển chọn" items={data.trending} query="?sort=newest" />
         <MovieRow title="Mới phát hành" items={data.newest} query="?sort=newest" />
         <MovieRow title="Phim bộ đặc sắc" items={data.series} query="?genre=Phim%20bộ" />
         <MovieRow title="Dành cho bạn" items={data.recommended} />

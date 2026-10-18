@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useRef, type ReactNode } from "react";
-import { X, Coins, ChevronRight, ArrowLeft, Star } from "lucide-react";
+import { X, ChevronRight, ArrowLeft, Star } from "lucide-react";
 import Link from "next/link";
 export function IconButton({
   children,
@@ -68,7 +68,8 @@ export function SectionHeader({
     </div>
   );
 }
-export function RatingBadge({ rating }: { rating: number }) {
+export function RatingBadge({ rating }: { rating: number | null }) {
+  if (rating == null || rating <= 0) return null;
   return (
     <span className="rating">
       <Star size={12} fill="currentColor" /> {rating.toFixed(1)}
@@ -77,8 +78,13 @@ export function RatingBadge({ rating }: { rating: number }) {
 }
 export function Coin({ small = false }: { small?: boolean }) {
   return (
-    <span className={`coin ${small ? "small" : ""}`}>
-      <Coins size={small ? 12 : 21} strokeWidth={2.5} />
+    <span className={`coin ${small ? "small" : ""}`} aria-hidden="true">
+      <img
+        src="/images/reward-coin-satin.webp"
+        alt=""
+        width={small ? 26 : 44}
+        height={small ? 26 : 44}
+      />
     </span>
   );
 }
@@ -119,10 +125,12 @@ export function Modal({
   title,
   children,
   onClose,
+  className = "",
 }: {
   title: string;
   children: ReactNode;
   onClose: () => void;
+  className?: string;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const closeRef = useRef(onClose);
@@ -141,7 +149,10 @@ export function Modal({
         if (!elements?.length) return;
         const first = elements[0],
           last = elements[elements.length - 1];
-        if (event.shiftKey && document.activeElement === first) {
+        if (!ref.current?.contains(document.activeElement)) {
+          event.preventDefault();
+          (event.shiftKey ? last : first).focus();
+        } else if (event.shiftKey && document.activeElement === first) {
           event.preventDefault();
           last.focus();
         } else if (!event.shiftKey && document.activeElement === last) {
@@ -160,7 +171,7 @@ export function Modal({
   return (
     <div className="modal-backdrop" onClick={onClose}>
       <div
-        className="modal"
+        className={`modal ${className}`}
         role="dialog"
         aria-modal="true"
         aria-labelledby="modal-title"

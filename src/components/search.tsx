@@ -15,7 +15,7 @@ export function SearchBar({
       <input
         type="search"
         aria-label="Tìm phim, diễn viên"
-        placeholder="Tìm kiếm phim, diễn viên..."
+        placeholder="Tìm phim, diễn viên..."
         value={value}
         onChange={(e) => onChange(e.target.value)}
         autoFocus={autoFocus}

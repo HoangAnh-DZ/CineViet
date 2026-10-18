@@ -1,0 +1,264 @@
+.manual-money-content {
+  max-width: 620px;
+  padding: 8px 20px 32px;
+  margin: auto;
+}
+.money-fieldset {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+}
+.money-fieldset:disabled {
+  opacity: 0.7;
+}
+.money-status.failed {
+  color: #ef627d;
+}
+.money-close {
+  font-size: 13px;
+  color: #aeb9c8;
+  display: grid;
+  place-items: center;
+  min-height: 44px;
+}
+.cash-balance {
+  margin: 4px 0 24px;
+}
+.cash-balance > span {
+  color: #93a2b5;
+  font-size: 13px;
+}
+.cash-balance > strong {
+  display: block;
+  font-size: 30px;
+  font-weight: 800;
+  margin: 4px 0;
+}
+.cash-balance > p {
+  font-size: 12px;
+  color: #8091a6;
+}
+.manual-money-form .field-label {
+  margin: 18px 0 8px;
+  display: block;
+}
+.manual-money-form .field {
+  border-radius: 8px;
+  background: #10151c;
+  border: 1px solid #ffffff12;
+  width: 100%;
+  min-height: 46px;
+}
+.manual-money-form textarea.field {
+  padding: 12px;
+  resize: vertical;
+}
+.money-presets {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.money-presets button {
+  border: 0;
+  background: #121820;
+  border-radius: 8px;
+  color: #b4c0cf;
+  min-height: 44px;
+  font-size: 13px;
+}
+.money-presets button[aria-pressed="true"] {
+  color: #fff;
+  background: #632630;
+}
+.deposit-bank {
+  background: #10151c;
+  border-radius: 12px;
+  padding: 18px 16px;
+  margin: 24px 0;
+}
+.deposit-bank h2 {
+  font-size: 18px;
+  margin-bottom: 12px;
+}
+.deposit-bank dl > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 42px;
+}
+.deposit-bank dt {
+  font-size: 12px;
+  color: #95a5b9;
+}
+.deposit-bank dd {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 750;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  text-align: right;
+}
+.deposit-bank button {
+  border: 0;
+  background: none;
+  color: #a6b5ca;
+  width: 36px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+}
+.bill-upload {
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  padding: 22px 12px;
+  border: 1px dashed #5e6b7d;
+  border-radius: 10px;
+  cursor: pointer;
+  color: #c3cfdf;
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+.bill-upload > strong {
+  font-size: 14px;
+}
+.bill-upload > span {
+  font-size: 12px;
+  color: #8fa1b8;
+}
+.bill-file-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  clip-path: inset(50%);
+  overflow: hidden;
+  white-space: nowrap;
+}
+.bill-upload:has(+ .bill-file-input:focus-visible) {
+  outline: 2px solid #ef3043;
+  outline-offset: 4px;
+}
+.bill-preview {
+  display: block;
+  max-width: 100%;
+  max-height: 300px;
+  margin: 16px auto;
+  object-fit: contain;
+  border-radius: 8px;
+}
+.money-warning {
+  color: #d6b78b;
+  font-size: 13px;
+  line-height: 1.7;
+  margin: 20px 0;
+}
+.manual-money-form > .button {
+  margin-top: 22px;
+  font-size: 14px;
+}
+.money-history {
+  margin-top: 36px;
+}
+.money-history h2 {
+  font-size: 20px;
+  margin-bottom: 16px;
+}
+.money-history-row {
+  padding: 18px 0;
+  border-bottom: 1px solid #ffffff0c;
+}
+.money-history-row > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.money-history-row strong {
+  font-size: 17px;
+}
+.money-history-row p {
+  font-size: 12px;
+  line-height: 1.7;
+  color: #93a5bb;
+  margin-top: 6px;
+  overflow-wrap: anywhere;
+}
+.money-status {
+  font-size: 11px;
+  border-radius: 4px;
+  padding: 4px 7px;
+  background: #252c36;
+  color: #b6c4d7;
+  white-space: nowrap;
+}
+.money-status.completed {
+  color: #9edcbd;
+  background: #213b30;
+}
+.money-status.rejected,
+.money-status.failed {
+  color: #edb1b9;
+  background: #3b242a;
+}
+.money-history-empty {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #8597ad;
+  font-size: 13px;
+  padding: 12px 0;
+}
+.money-success {
+  text-align: center;
+  padding: 20px 0;
+}
+.money-success > svg {
+  color: #89c8ad;
+  margin: auto;
+}
+.money-success h2 {
+  font-size: 22px;
+  margin: 14px 0;
+}
+.money-success p {
+  font-size: 14px;
+  color: #9fafc2;
+  line-height: 1.7;
+}
+.money-success > .button {
+  margin: 24px auto 12px;
+  max-width: 240px;
+}
+.money-text-link {
+  font-size: 13px;
+  color: #a6b5cb;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+}
+.reward-actions {
+  flex-wrap: wrap;
+}
+.reward-actions .money-deposit-cta {
+  background: #ef3043 !important;
+  color: #fff;
+}
+.reward-cash-note {
+  color: #b69d9f;
+  font-size: 12px;
+  margin-top: 12px;
+}
+.rewards-content .reward-actions .rewards-vip-cta {
+  flex-basis: 100%;
+  background: none !important;
+  min-height: 32px;
+  padding: 4px;
+  justify-content: flex-start;
+}
+.payos-checkout { display: grid; gap: 14px; min-width: 0; }
+.payos-checkout p { margin: 0; }

@@ -5,6 +5,22 @@ import { catalogSchema } from "./validation";
 import type { Movie, Episode, VideoSource, Subtitle } from "@/domain/models";
 const movieFields = sql`m.*, COALESCE((SELECT json_agg(g.name ORDER BY g.name) FROM cinevjet.movie_genres mg JOIN cinevjet.genres g ON g.id=mg.genre_id WHERE mg.movie_id=m.id),'[]') AS genres,
  (SELECT count(*)::int FROM cinevjet.episodes e WHERE e.movie_id=m.id AND e.status='PUBLISHED') AS episode_count`;
+function publicSourceCredit(value: unknown): VideoSource["credit"] {
+  if (!value || typeof value !== "object") return undefined;
+  const credit: NonNullable<VideoSource["credit"]> = {};
+  for (const key of [
+    "license_name",
+    "license_url",
+    "license_source_url",
+    "source_page_url",
+    "attribution",
+    "poster_attribution",
+  ] as const) {
+    const text = (value as Record<string, unknown>)[key];
+    if (typeof text === "string" && text.trim()) credit[key] = text;
+  }
+  return Object.keys(credit).length ? credit : undefined;
+}
 export function mapMovie(row: Record<string, unknown>): Movie {
   return {
     id: String(row.id),
@@ -17,7 +33,15 @@ export function mapMovie(row: Record<string, unknown>): Movie {
     release_year: Number(row.release_year),
     country: String(row.country),
     duration: Number(row.duration_minutes),
-    rating: Number(row.rating),
+    rating: row.rating == null ? null : Number(row.rating),
+    language: String(row.language || ""),
+    duration_seconds: row.duration_seconds == null ? undefined : Number(row.duration_seconds),
+    license_name: String(row.license_name || ""),
+    license_url: String(row.license_url || ""),
+    license_source_url: String(row.license_source_url || ""),
+    source_page_url: String(row.source_page_url || ""),
+    attribution: String(row.attribution || ""),
+    poster_attribution: String(row.poster_attribution || ""),
     type: row.type as Movie["type"],
     status: row.status as Movie["status"],
     vip_required: Boolean(row.vip_required),
@@ -27,45 +51,58 @@ export function mapMovie(row: Record<string, unknown>): Movie {
 }
 async function list(where: SQL, order: SQL, limit: number) {
   const result = await database().execute(
-    sql`SELECT ${movieFields} FROM cinevjet.movies m WHERE m.status='PUBLISHED' AND ${where} ORDER BY ${order} LIMIT ${limit}`,
+    sql`SELECT ${movieFields} FROM cinevjet.movies m WHERE m.status='PUBLISHED' AND NOT m.is_demo AND ${where} ORDER BY ${order} LIMIT ${limit}`,
   );
   return result.rows.map(mapMovie);
 }
 export async function homeCatalog() {
-  const [featured, trending, newest, series, recommended] = await Promise.all([
-    list(sql`true`, sql`m.rating DESC,m.id`, 3),
-    list(sql`true`, sql`m.rating DESC,m.id`, 6),
-    list(sql`true`, sql`m.release_year DESC,m.created_at DESC,m.id`, 6),
-    list(sql`m.type='SERIES'`, sql`m.rating DESC,m.id`, 6),
-    list(sql`m.vip_required=false`, sql`m.release_year DESC,m.rating DESC,m.id`, 6),
+  const [trending, newest, series, recommended, shortSeries] = await Promise.all([
+    list(sql`true`, sql`m.release_year DESC,m.id`, 6),
+    list(sql`true`, sql`m.created_at DESC,m.id`, 6),
+    list(
+      sql`m.type='SERIES' AND NOT EXISTS (SELECT 1 FROM cinevjet.movie_genres mg JOIN cinevjet.genres g ON g.id=mg.genre_id WHERE mg.movie_id=m.id AND g.name='Series tập ngắn')`,
+      sql`m.created_at DESC,m.id`,
+      6,
+    ),
+    list(
+      sql`m.vip_required=false AND m.type='MOVIE' AND m.duration_minutes>=40`,
+      sql`m.release_year DESC,m.id`,
+      6,
+    ),
+    list(
+      sql`m.type='SERIES' AND EXISTS (SELECT 1 FROM cinevjet.movie_genres mg JOIN cinevjet.genres g ON g.id=mg.genre_id WHERE mg.movie_id=m.id AND g.name='Series tập ngắn')`,
+      sql`m.created_at DESC,m.id`,
+      6,
+    ),
   ]);
-  return { featured, trending, newest, series, recommended };
+  return { featured: trending.slice(0, 3), trending, newest, series, recommended, shortSeries };
 }
 export async function findMovie(id: string) {
   const result = await database().execute(
-    sql`SELECT ${movieFields} FROM cinevjet.movies m WHERE (m.id=${id} OR m.slug=${id}) AND m.status='PUBLISHED' LIMIT 1`,
+    sql`SELECT ${movieFields} FROM cinevjet.movies m WHERE (m.id=${id} OR m.slug=${id}) AND m.status='PUBLISHED' AND NOT m.is_demo LIMIT 1`,
   );
   return result.rows[0] ? mapMovie(result.rows[0]) : null;
 }
 export async function movieEpisodes(id: string): Promise<Episode[]> {
   const result = await database().execute(
-    sql`SELECT * FROM cinevjet.episodes WHERE movie_id=${id} AND status='PUBLISHED' ORDER BY season_number,episode_number`,
+    sql`SELECT id,movie_id,season_number,episode_number,title,description,duration_seconds,thumbnail_url,release_date FROM cinevjet.episodes WHERE movie_id=${id} AND status='PUBLISHED' ORDER BY season_number,episode_number`,
   );
   return result.rows.map((r) => ({
     id: String(r.id),
     movie_id: String(r.movie_id),
     season: Number(r.season_number),
     episode_number: Number(r.episode_number),
-    title: String(r.title),
+    title: String(r.title || "").trim(),
+    description: String(r.description || "").trim(),
     duration: Number(r.duration_seconds),
-    thumbnail: String(r.thumbnail_url),
+    thumbnail: String(r.thumbnail_url || ""),
     release_date: r.release_date ? String(r.release_date) : "",
   }));
 }
 export async function relatedMovies(id: string) {
   return list(
     sql`m.id<>${id} AND EXISTS(SELECT 1 FROM cinevjet.movie_genres a JOIN cinevjet.movie_genres b ON a.genre_id=b.genre_id WHERE a.movie_id=m.id AND b.movie_id=${id})`,
-    sql`m.rating DESC,m.id`,
+    sql`m.rating DESC NULLS LAST,m.id`,
     6,
   );
 }
@@ -87,7 +124,14 @@ export async function playback(id: string, episodeId?: string) {
       protocol: r.format,
       url: r.playback_url,
       quality: r.quality,
-      mime_type: r.format === "MP4" ? "video/mp4" : "application/vnd.apple.mpegurl",
+      bitrate_bps: r.bitrate_bps == null ? undefined : Number(r.bitrate_bps),
+      credit: publicSourceCredit(r.provenance),
+      mime_type:
+        r.format === "MP4"
+          ? "video/mp4"
+          : r.format === "WEBM"
+            ? "video/webm"
+            : "application/vnd.apple.mpegurl",
     })) as VideoSource[],
     subtitles: subtitles.rows
       .filter((r) => r.format === "VTT")
@@ -102,24 +146,29 @@ export async function playback(id: string, episodeId?: string) {
   };
 }
 export async function catalogOptions() {
-  const [genres, countries, years] = await Promise.all([
-    database().execute(sql`SELECT name FROM cinevjet.genres ORDER BY name`),
-    database().execute(
-      sql`SELECT DISTINCT country FROM cinevjet.movies WHERE status='PUBLISHED' ORDER BY country`,
-    ),
-    database().execute(
-      sql`SELECT DISTINCT release_year FROM cinevjet.movies WHERE status='PUBLISHED' ORDER BY release_year DESC`,
-    ),
-  ]);
+  const result = await database().execute(sql`SELECT
+    ARRAY(SELECT g.name FROM cinevjet.genres g WHERE EXISTS (SELECT 1 FROM cinevjet.movie_genres mg JOIN cinevjet.movies m ON m.id=mg.movie_id WHERE mg.genre_id=g.id AND m.status='PUBLISHED' AND NOT m.is_demo) ORDER BY g.name) AS genres,
+    ARRAY(SELECT DISTINCT country FROM cinevjet.movies WHERE status='PUBLISHED' AND NOT is_demo ORDER BY country) AS countries,
+    ARRAY(SELECT DISTINCT release_year FROM cinevjet.movies WHERE status='PUBLISHED' AND NOT is_demo ORDER BY release_year DESC) AS years`);
+  const options = result.rows[0] as { genres: string[]; countries: string[]; years: number[] };
   return {
-    genres: ["Tất cả", "Phim lẻ", "Phim bộ", ...genres.rows.map((r) => String(r.name))],
-    countries: countries.rows.map((r) => String(r.country)),
-    years: years.rows.map((r) => Number(r.release_year)),
+    genres: ["Tất cả", "Phim lẻ", "Phim bộ", ...options.genres],
+    countries: options.countries,
+    years: options.years,
   };
+}
+export async function publicMoviePages() {
+  const result = await database().execute(
+    sql`SELECT slug,updated_at FROM cinevjet.movies WHERE status='PUBLISHED' AND NOT is_demo ORDER BY slug LIMIT 49999`,
+  );
+  return result.rows.map((row) => ({
+    slug: String(row.slug),
+    updatedAt: new Date(String(row.updated_at)),
+  }));
 }
 export async function searchCatalog(input: unknown) {
   const filters = catalogSchema.parse(input);
-  const conditions: SQL[] = [sql`m.status='PUBLISHED'`];
+  const conditions: SQL[] = [sql`m.status='PUBLISHED' AND NOT m.is_demo`];
   if (filters.q) {
     const q = `%${filters.q.replace(/[\\%_]/g, "\\$&")}%`;
     conditions.push(sql`(m.title ILIKE ${q} OR m.original_title ILIKE ${q})`);
@@ -137,8 +186,10 @@ export async function searchCatalog(input: unknown) {
   const where = sql.join(conditions, sql` AND `);
   const order =
     filters.sort === "rating"
-      ? sql`m.rating DESC,m.id`
-      : sql`m.release_year DESC,m.created_at DESC,m.id`;
+      ? sql`m.rating DESC NULLS LAST,m.release_year DESC,m.id`
+      : filters.sort === "newest"
+        ? sql`m.created_at DESC,m.id`
+        : sql`m.release_year DESC,m.created_at DESC,m.id`;
   const pageSize = 12;
   const [items, count] = await Promise.all([
     database().execute(

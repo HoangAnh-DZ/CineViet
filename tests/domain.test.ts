@@ -28,11 +28,11 @@ test("money rejects decimals, negative, unsafe and below-minimum values", () => 
 test("withdrawal quote does integer math and checks available balance", () => {
   assert.deepEqual(withdrawalQuote(200000, 1250000), {
     amount: 200000,
-    fee: 3000,
-    net_amount: 197000,
+    fee: 8000,
+    net_amount: 192000,
   });
   assert.throws(() => withdrawalQuote(1300000, 1250000));
-  assert.throws(() => withdrawalQuote(49999, 1250000));
+  assert.throws(() => withdrawalQuote(34999, 1250000));
 });
 test("VIP permissions require active paid subscription and server time", () => {
   const plans: VipPlan[] = [

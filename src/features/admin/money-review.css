@@ -1,0 +1,125 @@
+.admin-money-review .modal {
+  width: min(680px, calc(100vw - 24px));
+  max-height: 90dvh;
+  overflow: auto;
+}
+.money-review-person {
+  word-break: break-word;
+}
+.money-review-person small {
+  display: block;
+  color: #92a2b4;
+  font-size: 11px;
+  margin-top: 8px;
+}
+.money-bill-view {
+  display: block;
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #344457;
+  background: #0d1724;
+  border-radius: 12px;
+  color: #b6c5d8;
+  cursor: zoom-in;
+  margin: 14px 0;
+}
+.money-bill-view img {
+  display: block;
+  margin: auto;
+  max-width: 100%;
+  max-height: 220px;
+  object-fit: contain;
+}
+.money-bill-view.expanded {
+  cursor: zoom-out;
+}
+.money-bill-view.expanded img {
+  max-height: none;
+}
+.money-bill-view span {
+  display: block;
+  margin-top: 8px;
+  font-size: 12px;
+}
+.money-review-form {
+  display: grid;
+  gap: 14px;
+  margin-top: 18px;
+}
+.money-review-form label {
+  display: grid;
+  gap: 8px;
+  color: #bac8d8;
+  font-size: 13px;
+}
+.money-review-form textarea {
+  width: 100%;
+  min-height: 76px;
+  padding: 10px;
+  border: 1px solid #344457;
+  border-radius: 8px;
+  background: #101b29;
+  color: #fff;
+}
+.money-review-form .money-review-confirm {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #fff;
+  font-size: 14px;
+}
+.money-review-confirm input {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  accent-color: #df485e;
+}
+.money-review-warning {
+  font-size: 13px;
+  line-height: 1.7;
+  background: #282323;
+  padding: 12px;
+  border-radius: 8px;
+  color: #efca9c;
+}
+.money-audit-stamp {
+  font-size: 12px;
+  line-height: 1.8;
+  color: #92a2b4;
+  word-break: break-word;
+}
+.money-table-person small {
+  display: block;
+  font-size: 11px;
+  color: #92a2b4;
+  max-width: 230px;
+  overflow-wrap: anywhere;
+}
+.money-table-bill img {
+  width: 44px;
+  height: 44px;
+  object-fit: cover;
+  border-radius: 5px;
+}
+.money-table-detail {
+  background: none;
+  border: 0;
+  color: #7dc5fa;
+  cursor: pointer;
+  padding: 6px;
+  font-size: 12px;
+  white-space: nowrap;
+}
+.money-period-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0 0 12px;
+  flex-wrap: wrap;
+}
+.money-period-heading p {
+  font-size: 12px;
+  color: #92a2b4;
+  margin: 0;
+}

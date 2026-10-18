@@ -6,3 +6,26 @@ out/
 !.env.example
 test-results/
 .vercel/
+coverage/
+playwright-report/
+*.log
+*.dump
+*.backup
+*.sql.gz
+*.pem
+*.key
+*.p12
+*.pfx
+.ssh/
+.aws/
+.codex/
+.agents/
+backups/
+database/backups/
+public/bills/
+public/deposit-bills/
+
+# Internal operational evidence and Production-only operator configuration.
+docs/security-audit-2026-10-18.md
+docs/manual-money-status.md
+scripts/apply-runtime-role.mjs

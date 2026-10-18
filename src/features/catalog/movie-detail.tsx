@@ -1,99 +1,125 @@
 "use client";
 import { useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { ArrowLeft, Play } from "lucide-react";
 import type { Episode, Movie } from "@/domain/models";
+import { unoptimizedArtwork } from "@/domain/artwork";
 import { FavoriteButton, EpisodeSelector, MovieRow } from "@/components/movies";
-import { Modal, RatingBadge, SectionHeader } from "@/components/ui";
+import { RatingBadge, SectionHeader } from "@/components/ui";
+import { MovieCredit } from "@/components/movie-credit";
+import { useApp } from "@/components/providers";
+import { resumableProgress } from "@/domain/episodes";
 export function MovieDetail({
   movie,
   episodes,
   related,
-  previewUrl,
 }: {
   movie: Movie;
   episodes: Episode[];
   related: Movie[];
-  previewUrl?: string;
 }) {
   const [expanded, setExpanded] = useState(false);
-  const [trailer, setTrailer] = useState(false);
+  const { progress, entitlements } = useApp();
+  const saved = resumableProgress(movie, episodes, progress);
+  const requiresVip = movie.vip_required && !entitlements.includes("VIP_MOVIES");
+  const watchHref = `/watch/${movie.id}${saved?.episode_id ? `/${saved.episode_id}` : ""}`;
   return (
-    <>
+    <article className="cinematic-detail">
       <div className="detail-visual">
-        <img className="detail-backdrop" src={movie.backdrop} alt={movie.title} />
+        <Image
+          className="detail-backdrop"
+          src={movie.backdrop}
+          alt={movie.title}
+          fill
+          sizes="(max-width: 1440px) 100vw, 1440px"
+          preload
+          unoptimized={unoptimizedArtwork(movie.backdrop)}
+        />
         <div className="detail-shade" />
         <div className="detail-topbar">
           <Link href="/" className="icon-button" aria-label="Quay lại">
             <ArrowLeft size={21} />
           </Link>
-          <FavoriteButton movieId={movie.id} />
+          <span className="detail-type">{movie.type === "SERIES" ? "Phim bộ" : "Phim lẻ"}</span>
+        </div>
+        <div className="detail-summary">
+          <div className="detail-poster">
+            <Image
+              src={movie.poster}
+              alt={`Poster ${movie.title}`}
+              fill
+              sizes="(max-width: 599px) 104px, 180px"
+              unoptimized={unoptimizedArtwork(movie.poster)}
+            />
+          </div>
+          <div>
+            <h1>{movie.title}</h1>
+            {movie.original_title && movie.original_title !== movie.title ? (
+              <p className="original-title">{movie.original_title}</p>
+            ) : null}
+            <div className="metadata">
+              <RatingBadge rating={movie.rating} />
+              <span>• {movie.release_year}</span>
+              <span>
+                • {movie.type === "SERIES" ? `${episodes.length} tập` : `${movie.duration} phút`}
+              </span>
+            </div>
+            <div className="genre-tags">
+              {movie.genres.map((g) => (
+                <span key={g}>{g}</span>
+              ))}
+            </div>
+            <p className="country">{[movie.country, movie.language].filter(Boolean).join(" · ")}</p>
+            <div className="detail-actions">
+              <Link className="button primary" href={requiresVip ? "/vip" : watchHref}>
+                <Play size={18} fill="currentColor" aria-hidden="true" />
+                {requiresVip
+                  ? "Xem với VIP"
+                  : saved
+                    ? "Xem tiếp"
+                    : movie.type === "SERIES"
+                      ? "Xem tập đầu"
+                      : "Xem ngay"}
+              </Link>
+              <FavoriteButton
+                movieId={movie.id}
+                className="button secondary detail-save"
+                showLabel
+              />
+            </div>
+          </div>
         </div>
       </div>
-      <div className="detail-summary">
-        <div className="detail-poster">
-          <img src={movie.poster} alt={`Poster ${movie.title}`} />
-          <span className="poster-title">{movie.original_title}</span>
-        </div>
-        <div>
-          <h1>{movie.title}</h1>
-          <p className="original-title">{movie.original_title}</p>
-          <div className="metadata">
-            <RatingBadge rating={movie.rating} />
-            <span>• {movie.release_year}</span>
-            <span>
-              • {Math.floor(movie.duration / 60)}h {movie.duration % 60}m
-            </span>
-          </div>
-          <div className="genre-tags">
-            {movie.genres.map((g) => (
-              <span key={g}>{g}</span>
-            ))}
-          </div>
-          <p className="country">Quốc gia: {movie.country}</p>
-        </div>
-      </div>
-      <div className="content">
-        <div className="detail-actions">
-          <Link
-            className="button primary"
-            href={movie.vip_required ? "/vip" : `/watch/${movie.id}`}
+      <div className="content detail-content">
+        <section className="detail-synopsis">
+          <SectionHeader title="Câu chuyện" />
+          <p
+            id="movie-description"
+            className={`description ${expanded || movie.description.length <= 180 ? "" : "clamped"}`}
           >
-            {movie.vip_required ? "Xem với VIP" : "Xem ngay"}
-          </Link>
-          <button
-            className="button secondary"
-            disabled={!previewUrl}
-            onClick={() => setTrailer(true)}
-          >
-            <Play size={15} /> Trailer
-          </button>
-          <FavoriteButton movieId={movie.id} />
-        </div>
-        <section>
-          <SectionHeader title="Mô tả phim" />
-          <p className={`description ${expanded ? "" : "clamped"}`}>{movie.description}</p>
-          <button className="text-button" onClick={() => setExpanded(!expanded)}>
-            {expanded ? "Thu gọn" : "Xem thêm"}
-          </button>
+            {movie.description}
+          </p>
+          {movie.description.length > 180 ? (
+            <button
+              className="text-button"
+              aria-expanded={expanded}
+              aria-controls="movie-description"
+              onClick={() => setExpanded(!expanded)}
+            >
+              {expanded ? "Thu gọn" : "Xem thêm"}
+            </button>
+          ) : null}
         </section>
         {movie.type === "SERIES" ? (
           <section className="section-block">
-            <SectionHeader
-              title="Danh sách tập"
-              action={<span className="metadata">Vietsub⌄</span>}
-            />
-            <EpisodeSelector movie={movie} episodes={episodes} />
+            <SectionHeader title="Danh sách tập" />
+            <EpisodeSelector movie={movie} episodes={episodes} selected={saved?.episode_id} />
           </section>
         ) : null}
+        <MovieCredit movie={movie} />
         <MovieRow title="Phim liên quan" items={related} />
       </div>
-      {trailer ? (
-        <Modal title="Trailer mẫu" onClose={() => setTrailer(false)}>
-          <video controls playsInline autoPlay src={previewUrl} />
-          <p className="sample-credit">Big Buck Bunny · Blender Foundation · CC BY 3.0</p>
-        </Modal>
-      ) : null}
-    </>
+    </article>
   );
 }

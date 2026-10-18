@@ -17,7 +17,7 @@ import { Coin } from "./ui";
 export function WalletCard({ balance }: { balance: number }) {
   return (
     <div className="balance-card">
-      <p>Số dư</p>
+      <p>Số dư khả dụng · VND</p>
       <strong>{formatMoney(balance)}</strong>
       <Wallet className="balance-watermark" size={80} fill="currentColor" />
     </div>

@@ -1,0 +1,266 @@
+[
+  {
+    "id": "big-buck-bunny",
+    "sources": [
+      {
+        "url": "https://video.blender.org/object-storage/web_videos/bf1f3fb5-b119-4f9f-9930-8e20e892b898-720.mp4",
+        "quality": "720p",
+        "format": "MP4",
+        "provider": "BLENDER_OFFICIAL",
+        "bitrate_bps": 1488816
+      },
+      {
+        "url": "https://video.blender.org/object-storage/web_videos/bf1f3fb5-b119-4f9f-9930-8e20e892b898-480.mp4",
+        "quality": "480p",
+        "format": "MP4",
+        "provider": "BLENDER_OFFICIAL",
+        "bitrate_bps": 1053243
+      },
+      {
+        "url": "https://video.blender.org/object-storage/web_videos/bf1f3fb5-b119-4f9f-9930-8e20e892b898-360.mp4",
+        "quality": "360p",
+        "format": "MP4",
+        "provider": "BLENDER_OFFICIAL",
+        "bitrate_bps": 884138
+      },
+      {
+        "url": "https://video.blender.org/object-storage/web_videos/bf1f3fb5-b119-4f9f-9930-8e20e892b898-240.mp4",
+        "quality": "240p",
+        "format": "MP4",
+        "provider": "BLENDER_OFFICIAL",
+        "bitrate_bps": 624436
+      }
+    ]
+  },
+  {
+    "id": "elephants-dream",
+    "sources": [
+      {
+        "url": "https://video.blender.org/object-storage/web_videos/cccc3e60-0291-4ecc-aa56-39b2e2c7d0d5-720.mp4",
+        "quality": "720p",
+        "format": "MP4",
+        "provider": "BLENDER_OFFICIAL",
+        "bitrate_bps": 1432834
+      },
+      {
+        "url": "https://video.blender.org/object-storage/web_videos/cccc3e60-0291-4ecc-aa56-39b2e2c7d0d5-480.mp4",
+        "quality": "480p",
+        "format": "MP4",
+        "provider": "BLENDER_OFFICIAL",
+        "bitrate_bps": 852387
+      },
+      {
+        "url": "https://video.blender.org/object-storage/web_videos/cccc3e60-0291-4ecc-aa56-39b2e2c7d0d5-360.mp4",
+        "quality": "360p",
+        "format": "MP4",
+        "provider": "BLENDER_OFFICIAL",
+        "bitrate_bps": 609003
+      },
+      {
+        "url": "https://video.blender.org/object-storage/web_videos/cccc3e60-0291-4ecc-aa56-39b2e2c7d0d5-240.mp4",
+        "quality": "240p",
+        "format": "MP4",
+        "provider": "BLENDER_OFFICIAL",
+        "bitrate_bps": 381630
+      }
+    ]
+  },
+  {
+    "id": "tears-of-steel",
+    "sources": [
+      {
+        "url": "https://video.blender.org/object-storage/web_videos/8533ea43-4271-4a57-9694-e9d0b35e1aa1-720.mp4",
+        "quality": "720p",
+        "format": "MP4",
+        "provider": "BLENDER_OFFICIAL",
+        "bitrate_bps": 2454053
+      },
+      {
+        "url": "https://video.blender.org/object-storage/web_videos/8533ea43-4271-4a57-9694-e9d0b35e1aa1-480.mp4",
+        "quality": "480p",
+        "format": "MP4",
+        "provider": "BLENDER_OFFICIAL",
+        "bitrate_bps": 1333454
+      },
+      {
+        "url": "https://video.blender.org/object-storage/web_videos/8533ea43-4271-4a57-9694-e9d0b35e1aa1-360.mp4",
+        "quality": "360p",
+        "format": "MP4",
+        "provider": "BLENDER_OFFICIAL",
+        "bitrate_bps": 937756
+      },
+      {
+        "url": "https://video.blender.org/object-storage/web_videos/8533ea43-4271-4a57-9694-e9d0b35e1aa1-240.mp4",
+        "quality": "240p",
+        "format": "MP4",
+        "provider": "BLENDER_OFFICIAL",
+        "bitrate_bps": 550336
+      }
+    ]
+  },
+  {
+    "id": "sintel",
+    "sources": [
+      {
+        "url": "https://video.blender.org/object-storage/web_videos/0eb052d0-fd51-43e6-aa33-ecdbf77a5d40-720.mp4",
+        "quality": "720p",
+        "format": "MP4",
+        "provider": "BLENDER_OFFICIAL",
+        "bitrate_bps": 1800798
+      },
+      {
+        "url": "https://video.blender.org/object-storage/web_videos/0eb052d0-fd51-43e6-aa33-ecdbf77a5d40-480.mp4",
+        "quality": "480p",
+        "format": "MP4",
+        "provider": "BLENDER_OFFICIAL",
+        "bitrate_bps": 1080870
+      },
+      {
+        "url": "https://video.blender.org/object-storage/web_videos/0eb052d0-fd51-43e6-aa33-ecdbf77a5d40-360.mp4",
+        "quality": "360p",
+        "format": "MP4",
+        "provider": "BLENDER_OFFICIAL",
+        "bitrate_bps": 754483
+      },
+      {
+        "url": "https://video.blender.org/object-storage/web_videos/0eb052d0-fd51-43e6-aa33-ecdbf77a5d40-240.mp4",
+        "quality": "240p",
+        "format": "MP4",
+        "provider": "BLENDER_OFFICIAL",
+        "bitrate_bps": 443291
+      }
+    ]
+  },
+  {
+    "id": "spring",
+    "sources": [
+      {
+        "url": "https://video.blender.org/object-storage/web_videos/3d95fb3d-c866-42c8-9db1-fe82f48ccb95-720.mp4",
+        "quality": "720p",
+        "format": "MP4",
+        "provider": "BLENDER_OFFICIAL",
+        "bitrate_bps": 1680108
+      },
+      {
+        "url": "https://video.blender.org/object-storage/web_videos/3d95fb3d-c866-42c8-9db1-fe82f48ccb95-480.mp4",
+        "quality": "480p",
+        "format": "MP4",
+        "provider": "BLENDER_OFFICIAL",
+        "bitrate_bps": 934450
+      },
+      {
+        "url": "https://video.blender.org/object-storage/web_videos/3d95fb3d-c866-42c8-9db1-fe82f48ccb95-360.mp4",
+        "quality": "360p",
+        "format": "MP4",
+        "provider": "BLENDER_OFFICIAL",
+        "bitrate_bps": 655618
+      },
+      {
+        "url": "https://video.blender.org/object-storage/web_videos/3d95fb3d-c866-42c8-9db1-fe82f48ccb95-240.mp4",
+        "quality": "240p",
+        "format": "MP4",
+        "provider": "BLENDER_OFFICIAL",
+        "bitrate_bps": 393341
+      }
+    ]
+  },
+  {
+    "id": "coffee-run",
+    "sources": [
+      {
+        "url": "https://video.blender.org/object-storage/web_videos/ff8fe61b-026f-4f07-b66b-2a790d6f6ab1-720.mp4",
+        "quality": "720p",
+        "format": "MP4",
+        "provider": "BLENDER_OFFICIAL",
+        "bitrate_bps": 1695206
+      },
+      {
+        "url": "https://video.blender.org/object-storage/web_videos/ff8fe61b-026f-4f07-b66b-2a790d6f6ab1-480.mp4",
+        "quality": "480p",
+        "format": "MP4",
+        "provider": "BLENDER_OFFICIAL",
+        "bitrate_bps": 979080
+      },
+      {
+        "url": "https://video.blender.org/object-storage/web_videos/ff8fe61b-026f-4f07-b66b-2a790d6f6ab1-360.mp4",
+        "quality": "360p",
+        "format": "MP4",
+        "provider": "BLENDER_OFFICIAL",
+        "bitrate_bps": 699955
+      },
+      {
+        "url": "https://video.blender.org/object-storage/web_videos/ff8fe61b-026f-4f07-b66b-2a790d6f6ab1-240.mp4",
+        "quality": "240p",
+        "format": "MP4",
+        "provider": "BLENDER_OFFICIAL",
+        "bitrate_bps": 453148
+      }
+    ]
+  },
+  {
+    "id": "caminandes-3-llamigos",
+    "sources": [
+      {
+        "url": "https://video.blender.org/object-storage/web_videos/23f3ef79-15dc-44c5-aa45-cf92e78a4509-720.mp4",
+        "quality": "720p",
+        "format": "MP4",
+        "provider": "BLENDER_OFFICIAL",
+        "bitrate_bps": 1552697
+      },
+      {
+        "url": "https://video.blender.org/object-storage/web_videos/23f3ef79-15dc-44c5-aa45-cf92e78a4509-480.mp4",
+        "quality": "480p",
+        "format": "MP4",
+        "provider": "BLENDER_OFFICIAL",
+        "bitrate_bps": 892448
+      },
+      {
+        "url": "https://video.blender.org/object-storage/web_videos/23f3ef79-15dc-44c5-aa45-cf92e78a4509-360.mp4",
+        "quality": "360p",
+        "format": "MP4",
+        "provider": "BLENDER_OFFICIAL",
+        "bitrate_bps": 632636
+      },
+      {
+        "url": "https://video.blender.org/object-storage/web_videos/23f3ef79-15dc-44c5-aa45-cf92e78a4509-240.mp4",
+        "quality": "240p",
+        "format": "MP4",
+        "provider": "BLENDER_OFFICIAL",
+        "bitrate_bps": 399908
+      }
+    ]
+  },
+  {
+    "id": "glass-half",
+    "sources": [
+      {
+        "url": "https://video.blender.org/object-storage/web_videos/64222c8a-c4c7-4b3b-9850-7fb2078edcf6-720.mp4",
+        "quality": "720p",
+        "format": "MP4",
+        "provider": "BLENDER_OFFICIAL",
+        "bitrate_bps": 1117510
+      },
+      {
+        "url": "https://video.blender.org/object-storage/web_videos/64222c8a-c4c7-4b3b-9850-7fb2078edcf6-480.mp4",
+        "quality": "480p",
+        "format": "MP4",
+        "provider": "BLENDER_OFFICIAL",
+        "bitrate_bps": 728867
+      },
+      {
+        "url": "https://video.blender.org/object-storage/web_videos/64222c8a-c4c7-4b3b-9850-7fb2078edcf6-360.mp4",
+        "quality": "360p",
+        "format": "MP4",
+        "provider": "BLENDER_OFFICIAL",
+        "bitrate_bps": 543052
+      },
+      {
+        "url": "https://video.blender.org/object-storage/web_videos/64222c8a-c4c7-4b3b-9850-7fb2078edcf6-240.mp4",
+        "quality": "240p",
+        "format": "MP4",
+        "provider": "BLENDER_OFFICIAL",
+        "bitrate_bps": 371074
+      }
+    ]
+  }
+]

@@ -4,6 +4,8 @@ import { database } from "@/server/db";
 import { checkOrigin, failure, json, readBody } from "@/server/http";
 import { z } from "zod";
 import { sql } from "drizzle-orm";
+import { savedShortIds } from "@/server/library";
+import { throttleAuth } from "@/server/auth-core";
 export async function GET() {
   try {
     const user = await currentUser();
@@ -14,14 +16,24 @@ export async function GET() {
         progress: [],
         balance: { cash: 0, available: 0, coins: 0 },
         entitlements: [],
+        savedShortIds: [],
       });
-    const [favorites, progress, balance, rights] = await Promise.all([
+    await throttleAuth(`api:${user.id}`, 360, 1);
+    const [favorites, progress, balance, rights, bookmarks] = await Promise.all([
       favoriteMovies(user.id),
       history(user.id),
       balances(user.id),
       entitlements(user.id),
+      savedShortIds(user.id),
     ]);
-    return json({ user, favoriteMovies: favorites, progress, balance, entitlements: rights });
+    return json({
+      user,
+      favoriteMovies: favorites,
+      progress,
+      balance,
+      entitlements: rights,
+      savedShortIds: bookmarks,
+    });
   } catch (e) {
     return failure(e);
   }

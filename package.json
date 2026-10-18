@@ -11,17 +11,25 @@
     "test:mobile": "node scripts/verify-production.mjs",
     "db:migrate": "node --env-file-if-exists=.env.local scripts/migrate.mjs",
     "db:seed": "node --env-file-if-exists=.env.local scripts/seed.mjs",
-    "test:production": "node --conditions=react-server --import tsx --test tests/production.test.mts"
+    "test:production": "node --conditions=react-server --import tsx --test tests/production.test.mts",
+    "test:rewards": "node --env-file-if-exists=.env.vip-test --conditions=react-server --import tsx --test tests/vip-rewards.test.mts",
+    "test:streaming": "node --import tsx --test tests/streaming.test.mts",
+    "test:dashboard": "node --conditions=react-server --import tsx --test tests/dashboard-library.test.mts"
   },
   "dependencies": {
+    "@vercel/blob": "^2.8.1",
     "bcryptjs": "^3.0.3",
+    "botid": "1.5.11",
     "drizzle-orm": "^0.45.3",
+    "jose": "5.10.0",
     "lucide-react": "^1.52.0",
     "next": "^16.4.0",
     "pg": "^8.23.1",
+    "qrcode": "^1.5.4",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
     "server-only": "^0.0.1",
+    "sharp": "0.35.5",
     "zod": "^4.6.5"
   },
   "devDependencies": {
@@ -31,8 +39,10 @@
     "@tailwindcss/postcss": "^4.3.3",
     "@types/node": "^26.6.4",
     "@types/pg": "^8.23.1",
+    "@types/qrcode": "^1.5.6",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
+    "jsqr": "^1.4.0",
     "postcss": "^8.5.29",
     "prettier": "^3.9.9",
     "tailwindcss": "^4.3.3",

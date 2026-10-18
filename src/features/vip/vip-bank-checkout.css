@@ -1,0 +1,125 @@
+.vip-bank-modal {
+  width: min(100%, 560px);
+  max-height: calc(100dvh - 32px);
+  overflow-y: auto;
+}
+.vip-bank-checkout {
+  display: grid;
+  gap: 16px;
+  min-width: 0;
+}
+.vip-product-facts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin: 14px 0;
+}
+.vip-product-facts > div {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+.vip-product-facts dt {
+  color: #a3b0c1;
+  font-size: 12px;
+}
+.vip-product-facts dd {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 800;
+  overflow-wrap: anywhere;
+}
+.vip-bank-package {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+.vip-bank-package h3 {
+  margin: 0;
+  font-size: 20px;
+}
+.vip-bank-package > strong {
+  color: #f1d08e;
+  font-size: clamp(22px, 6vw, 30px);
+  white-space: nowrap;
+}
+.vip-bank-method,
+.vip-bank-status {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid #2b3744;
+  border-radius: 12px;
+  font-weight: 750;
+}
+.vip-bank-status {
+  color: #f1d08e;
+  background: #b1842010;
+}
+.vip-bank-status.is-completed {
+  color: #80dab1;
+}
+.vip-bank-details {
+  display: grid;
+  margin: 0;
+  border: 1px solid #2b3744;
+  border-radius: 12px;
+  padding: 4px 14px;
+}
+.vip-bank-details > div {
+  display: grid;
+  gap: 4px;
+  padding: 10px 0;
+  min-width: 0;
+}
+.vip-bank-details > div + div {
+  border-top: 1px solid #ffffff0d;
+}
+.vip-bank-details dt {
+  color: #a3b0c1;
+  font-size: 13px;
+}
+.vip-bank-details dd {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin: 0;
+  font-weight: 750;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.vip-bank-details dd > span,
+.vip-bank-details code {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.vip-bank-details code {
+  font-size: 14px;
+  color: #f1d08e;
+}
+.vip-bank-details .icon-button {
+  flex: 0 0 44px;
+  width: 44px;
+  height: 44px;
+}
+.vip-bank-request-id {
+  margin: 0;
+  color: #94a3b8;
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+.vip-bank-checkout .helper {
+  margin: 0;
+  line-height: 1.55;
+}
+@media (max-width: 360px) {
+  .vip-bank-details {
+    padding-inline: 10px;
+  }
+  .vip-bank-package {
+    gap: 8px;
+  }
+}

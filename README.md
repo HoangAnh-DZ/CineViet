@@ -1,5 +1,27 @@
 # CineVjet / CINEMA
 
+## Source review snapshot
+
+This repository publishes the current frontend, backend, SQL policies, migrations,
+dependencies and tests for independent code review. The historical notes below
+describe earlier releases and are not a statement of current production status.
+The current source includes Admin, payOS, VIP, Coins, rewards, withdrawals, saved
+bank accounts, referrals and Shorts. Read the implementation and tests when
+evaluating those flows.
+
+Production credentials, private financial evidence, internal audit findings and
+the Production-specific role-switch operator script are excluded. Bank account
+defaults/assertions are anonymized in the shared source; they are sample values,
+not payment instructions. The original private values remain outside this Git
+snapshot. No production settings or data were changed to publish it.
+
+**Do not apply the anonymized migration snapshot to an existing production
+database.** Migration 0011 contains redacted bank defaults, so its checksum differs
+from the private original. Preserve the original migration journal and operator
+source for that environment; do not bypass checksum verification. Use a fresh,
+isolated database for review and tests. Nothing in the publishing process runs
+migrations or deploys Vercel.
+
 Next.js 16.4, React, TypeScript, Drizzle and PostgreSQL. Existing mobile UI, Nunito Sans and Lucide are preserved. Production routes use server repositories; mock catalog/account adapters are restricted to fixtures and legacy tests.
 
 ## Configure and run
@@ -40,17 +62,26 @@ For isolated local browser checks, run `node scripts/test-database.mjs`, configu
 - Protected pages: profile, rewards, wallet and nested wallet pages, favorites and history. Streaming page redirects may have HTTP 200 with a server-generated redirect; API access still returns 401.
 - Catalog, metadata, genres, published episodes, related movies and playback metadata are database queries. Explore/search use 12-item pages, server filters and a 300 ms debounce.
 - Favorites are unique per user/movie. Progress uses a NULLS NOT DISTINCT unique constraint per user/movie/episode, server bounds, and a 15-second save interval plus pause/end/page exit. Continue watching joins real movie metadata and sorts by latest progress; completed items are excluded from Home.
-- Coin/check-in/VIP/cash schemas are prepared. Wallet and coin balances start at zero, ledgers are empty. Check-in/reward payouts and deposit/withdraw/VIP purchases are disabled. Old demo APIs return 410. VIP permissions are derived from live server subscriptions and expiry.
+- Wallet and coin balances start at zero and remain separate. Daily check-in uses the live coin ledger and the existing Free/VIP reward cycles; missions are pending and do not pay out. Deposit, withdrawal and paid VIP purchases remain disabled. Old demo APIs return 410. VIP permissions are derived from live server subscriptions and expiry. See `docs/vip-rewards-status.md` for the business rules.
 - Social login and password reset are explicit placeholders. No payment gateway, full admin, DRM, HLS library, custom domain or streaming CDN is enabled.
 
 ## Deployment
 
-Private repository: https://github.com/HoangAnh-DZ/cinevjet
+Source review repository: https://github.com/HoangAnh-DZ/CineViet
 
-Vercel project: `cinevjet`, ID `prj_pS99SOdXtn13R4CD2XyIvmBgimCA`, Node 24, Singapore region. Set the three variables in Production, migrate/seed Neon, pass the checks, connect the repository and deploy Production. Then verify the actual assigned URL with `BASE_URL`. Database credentials and `.vercel` files must remain ignored. Deployment status is recorded separately in `docs/production-status.md`; the existence of the project or a build does not prove deployed runtime success.
+Deployment is outside this source publishing task. Review with privately configured,
+isolated services; do not connect this snapshot to live financial data or run its
+verification scripts against production. Database credentials and `.vercel` files
+must remain ignored. Historical deployment notes are not current runtime evidence.
 
 ## Assets
 
 Catalog illustrations are original AI-generated assets in `public/images`. The local sample is [Big Buck Bunny](https://peach.blender.org/) by Blender Foundation, CC BY 3.0, served originally by [W3C](https://media.w3.org/2010/05/bunny/trailer.mp4). It is a sample clip unrelated to the fictional titles. Vietnamese subtitles are illustrative.
+
+The public `/shorts` feed plays five real six-second Big Buck Bunny demo clips with stereo audio, not animated posters. The complete landscape picture is preserved over a moving blurred portrait background. Attribution and modifications are documented in `public/video/shorts/LICENSE.txt` and available from each video's source button. Clips are explicitly labeled samples unrelated to the linked fictional catalog titles.
+
+Metadata loads in batches of three; only the active and next video receive media sources. Like/save is local to the viewing session, comments show an honest empty foundation, and sharing uses `/shorts?id=<shortId>` with Web Share and an explicit copy-link fallback. Movie viewing history is not written by Shorts.
+
+To regenerate the assets, download the licensed source linked in `LICENSE.txt`, set `SHORTS_SOURCE` to its extracted `.m4v`, and run `scripts/generate-shorts.py` with `FFMPEG_BINARY` or the PyPI `imageio-ffmpeg` package. The full source archive belongs outside `public`; production serves only the five compressed clips and their thumbnails.
 
 The query implementation follows [Drizzle PostgreSQL](https://orm.drizzle.team/docs/get-started-postgresql) and [transactions](https://orm.drizzle.team/docs/transactions). Local verification uses [PGlite Socket](https://pglite.dev/docs/pglite-socket).

@@ -3,7 +3,8 @@ import assert from "node:assert/strict";
 import { mkdir, writeFile } from "node:fs/promises";
 import { randomUUID } from "node:crypto";
 const base = process.env.BASE_URL || "http://localhost:3000";
-const widths = [360, 375, 390, 412, 430],
+const targeted = process.env.VERIFY_TARGETED === "1";
+const widths = targeted ? [360, 390, 430] : [360, 375, 390, 412, 430],
   checks = [],
   errors = [];
 await mkdir("test-results/production-mobile", { recursive: true });
@@ -163,7 +164,7 @@ try {
     "/wallet/deposit",
     "/wallet/withdraw",
     "/vip",
-  ];
+  ].filter((route) => !targeted || ["/", "/explore", "/search", "/login", "/register", "/movie/desert-heir", "/watch/desert-heir/desert-heir-ep-1", "/profile", "/favorites", "/history", "/wallet"].includes(route));
   for (const width of widths) {
     await page.setViewportSize({ width, height: 844 });
     for (const route of routes) {

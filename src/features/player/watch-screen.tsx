@@ -16,6 +16,9 @@ import { EpisodeSelector, FavoriteButton } from "@/components/movies";
 import { IconButton, Modal, SectionHeader } from "@/components/ui";
 import { VideoPlayerShell } from "./video-player-shell";
 import { useApp } from "@/components/providers";
+import { MovieCredit } from "@/components/movie-credit";
+import { autoSource, lowerSource } from "@/domain/playback";
+import { episodeDuration, episodeHeading } from "@/domain/episodes";
 export function WatchScreen({
   movie,
   episode,
@@ -35,15 +38,50 @@ export function WatchScreen({
   const [subtitle, setSubtitle] = useState("");
   const [report, setReport] = useState(false);
   const [issue, setIssue] = useState("Không phát được video");
-  const [sourceId, setSourceId] = useState(sources[0]?.id ?? "");
-  const selectedSource = sources.find((source) => source.id === sourceId) ?? sources[0];
-  const current = episode?.episode_number ?? 1;
+  const [sourceId, setSourceId] = useState("AUTO");
+  const [autoId, setAutoId] = useState(
+    () =>
+      autoSource(
+        sources,
+        typeof navigator === "undefined"
+          ? undefined
+          : (navigator as Navigator & { connection?: { downlink?: number; saveData?: boolean } })
+              .connection,
+      )?.id,
+  );
+  const selectedSource =
+    sources.find((source) => source.id === (sourceId === "AUTO" ? autoId : sourceId)) ?? sources[0];
+  function reduceQuality() {
+    if (sourceId !== "AUTO" || !selectedSource) return false;
+    const lower = lowerSource(sources, selectedSource);
+    if (!lower) return false;
+    setAutoId(lower.id);
+    return true;
+  }
   const index = episodes.findIndex((e) => e.id === episode?.id);
+  async function copyVideoIssue() {
+    try {
+      await navigator.clipboard.writeText(
+        [
+          `CineVjet · ${movie.title}`,
+          `Vấn đề: ${issue}`,
+          ...(episode ? [episodeHeading(episode)] : []),
+          `Trang: ${window.location.origin}${window.location.pathname}`,
+        ].join("\n"),
+      );
+      setReport(false);
+      toast("Đã sao chép thông tin lỗi. Bạn có thể gửi cho bộ phận hỗ trợ.");
+    } catch {
+      toast("Chưa sao chép được. Hãy gửi tên phim và lỗi cho bộ phận hỗ trợ.");
+    }
+  }
   async function share() {
     try {
-      if (navigator.share) await navigator.share({ title: movie.title, url: window.location.href });
+      const url = new URL(window.location.pathname + window.location.search, window.location.origin)
+        .href;
+      if (navigator.share) await navigator.share({ title: movie.title, url });
       else {
-        await navigator.clipboard.writeText(window.location.href);
+        await navigator.clipboard.writeText(url);
         toast("Đã sao chép liên kết");
       }
     } catch {
@@ -68,13 +106,14 @@ export function WatchScreen({
             value={sourceId}
             onChange={(e) => setSourceId(e.target.value)}
           >
-            {sources.map((source) => (
-              <option key={source.id} value={source.id}>
-                {source.quality.toUpperCase()}
-              </option>
-            ))}
-            <option disabled>1080P · VIP</option>
-            <option disabled>4K · VIP</option>
+            <option value="AUTO">Tự động</option>
+            {sources
+              .filter((source) => source.quality !== "AUTO")
+              .map((source) => (
+                <option key={source.id} value={source.id}>
+                  {source.quality.toUpperCase()}
+                </option>
+              ))}
           </select>
           <Captions size={19} />
           <select
@@ -101,20 +140,36 @@ export function WatchScreen({
           episodeId={episode?.id}
           movie={movie}
           episodeNumber={episode?.episode_number}
+          onBufferTimeout={reduceQuality}
         />
       ) : (
         <div className="empty-state">
-          <h2>{canPlay ? "Chưa có nguồn phát" : "Phim dành cho thành viên VIP"}</h2>
-          <p>{canPlay ? "Nguồn video đang được cập nhật." : "Nâng cấp để mở khóa bộ phim này."}</p>
-          <Link className="button primary" href="/vip">
-            Khám phá gói VIP
+          <h2>{canPlay ? "Video chưa sẵn sàng" : "Phim dành cho thành viên VIP"}</h2>
+          <p>{canPlay ? "Vui lòng thử lại sau." : "Nâng cấp để mở khóa bộ phim này."}</p>
+          <Link className="button primary" href={canPlay ? `/movie/${movie.slug}` : "/vip"}>
+            {canPlay ? "Chi tiết phim" : "Khám phá gói VIP"}
           </Link>
         </div>
       )}
-      <div className="content">
+      <div className="content watch-content">
         <div className="watch-heading">
           <h1>{movie.title}</h1>
-          <p>{episode ? `Tập ${String(current).padStart(2, "0")}` : movie.original_title}</p>
+          {episode ? (
+            <>
+              <h2 className="watch-episode-title">{episodeHeading(episode)}</h2>
+              {episodeDuration(episode.duration) ? (
+                <p>{episodeDuration(episode.duration)}</p>
+              ) : null}
+              {episode.description?.trim() ? (
+                <details className="watch-episode-synopsis">
+                  <summary>Nội dung tập</summary>
+                  <p>{episode.description}</p>
+                </details>
+              ) : null}
+            </>
+          ) : movie.original_title && movie.original_title !== movie.title ? (
+            <p>{movie.original_title}</p>
+          ) : null}
         </div>
         <div className="watch-actions">
           <div className="watch-favorite">
@@ -166,10 +221,7 @@ export function WatchScreen({
               )}
             </div>
             <section className="section-block">
-              <SectionHeader
-                title="Danh sách tập"
-                action={<span className="metadata">Vietsub ›</span>}
-              />
+              <SectionHeader title="Danh sách tập" />
               <EpisodeSelector movie={movie} episodes={episodes} selected={episode.id} compact />
             </section>
           </>
@@ -192,13 +244,9 @@ export function WatchScreen({
           </div>
           <p className="description section-block">{movie.description}</p>
         </section>
-        <p className="sample-credit">
-          Video mẫu:{" "}
-          <a href="https://peach.blender.org/" target="_blank" rel="noreferrer">
-            Big Buck Bunny
-          </a>{" "}
-          · Blender Foundation · CC BY 3.0.
-        </p>
+        <MovieCredit
+          movie={selectedSource?.credit ? { ...movie, ...selectedSource.credit } : movie}
+        />
       </div>
       {report ? (
         <Modal title="Báo lỗi video" onClose={() => setReport(false)}>
@@ -215,14 +263,8 @@ export function WatchScreen({
             <option>Phụ đề không hiển thị</option>
             <option>Âm thanh bị lỗi</option>
           </select>
-          <button
-            className="button primary wide"
-            onClick={() => {
-              setReport(false);
-              toast("Đã ghi nhận phản hồi trong phiên trải nghiệm.");
-            }}
-          >
-            Gửi phản hồi demo
+          <button className="button primary wide" onClick={copyVideoIssue}>
+            Sao chép thông tin lỗi
           </button>
         </Modal>
       ) : null}

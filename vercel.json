@@ -1,4 +1,6 @@
 {
-  "framework": "nextjs",
-  "regions": ["sin1"]
+  "crons": [
+    { "path": "/api/internal/finance-worker", "schedule": "0 0 * * *" },
+    { "path": "/api/internal/shorts-sync", "schedule": "0 1 * * *" }
+  ]
 }

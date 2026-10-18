@@ -1,0 +1,14 @@
+Big Buck Bunny short demo clips
+
+Copyright 2008, Blender Foundation / www.bigbuckbunny.org.
+Licensed under Creative Commons Attribution 3.0:
+https://creativecommons.org/licenses/by/3.0/
+Original project and license statement: https://peach.blender.org/about/
+Source: https://download.blender.org/peach/bigbuckbunny_movies/BigBuckBunny_640x360.m4v.zip
+
+CineVjet modifications: five six-second cuts at source offsets 65, 130, 195,
+260 and 325 seconds; stereo AAC audio; portrait layout with the complete landscape
+frame over a blurred copy of the moving video; compressed H.264 output.
+These are explicitly labeled demo clips, not footage of the linked fictional
+CineVjet catalog titles. No Blender or other third-party brand logo is used
+as CineVjet branding.

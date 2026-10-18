@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
 import Link from "next/link";
+import { ArrowDownToLine, ArrowUpFromLine, History, ShieldCheck } from "lucide-react";
 import { EmptyState, PageHeader, SectionHeader } from "@/components/ui";
 import { WalletCard, CoinBalanceCard, TransactionItem } from "@/components/finance";
 
@@ -23,19 +24,26 @@ export function WalletScreen({
   const error = "";
   return (
     <>
-      <PageHeader title={history ? "Lịch sử giao dịch" : "Ví"} back={history ? "/wallet" : "/"} />
+      <PageHeader
+        title={history ? "Lịch sử giao dịch" : "Ví"}
+        back={history ? "/wallet" : "/explore"}
+      />
       <div className="content wallet-content">
         {!history ? (
           <>
-            <WalletCard balance={balance} />
+            <WalletCard balance={available} />
             <CoinBalanceCard balance={coins} compact />
             <div className="wallet-actions">
-              <button className="button primary" disabled>
-                Nạp tiền
+              <button className="button primary" disabled aria-label="Nạp tiền · đang hoàn thiện">
+                <ArrowDownToLine size={21} /> Nạp tiền
               </button>
-              <button className="button secondary" disabled>
-                Rút tiền
+              <button className="button secondary" disabled aria-label="Rút tiền · đang hoàn thiện">
+                <ArrowUpFromLine size={21} /> Rút tiền
               </button>
+              <Link href="/wallet/history" className="button secondary">
+                <History size={21} />
+                Lịch sử
+              </Link>
             </div>
             <SectionHeader title="Giao dịch gần đây" href="/wallet/history" />
           </>
@@ -69,7 +77,10 @@ export function WalletScreen({
             {error}
           </p>
         ) : null}
-        <p className="demo-note">Nạp/rút tiền đang hoàn thiện.</p>
+        <p className="wallet-notice">
+          <ShieldCheck size={16} /> Số dư VND và xu được quản lý riêng. Nạp/rút tiền đang hoàn
+          thiện.
+        </p>
         {!visible.length ? (
           <EmptyState title="Chưa có giao dịch" body="Lịch sử giao dịch sẽ xuất hiện tại đây." />
         ) : null}

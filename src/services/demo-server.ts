@@ -26,7 +26,14 @@ export function rewardsSnapshot(now = new Date()): RewardsSnapshot {
   const claimed =
     demoRewards.claimed === 7 && demoRewards.lastDate !== date ? 0 : demoRewards.claimed;
   return {
-    wallet: { id: "coin-demo", user_id: "demo-user", asset: "COIN", balance: demoRewards.balance },
+    wallet: {
+      id: "coin-demo",
+      user_id: "demo-user",
+      asset: "COIN",
+      balance: demoRewards.balance,
+      reserved: 0,
+      available: demoRewards.balance,
+    },
     days: checkInDays(claimed, demoRewards.lastDate === date),
     ledger: [...demoRewards.ledger],
     calendar_date: date,

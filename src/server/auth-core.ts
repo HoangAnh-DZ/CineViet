@@ -4,8 +4,9 @@ import { hash, compare } from "bcryptjs";
 import { sql } from "drizzle-orm";
 import { database } from "./db";
 import { ApiError } from "./http";
-import { credentialsSchema, registrationSchema } from "./validation";
+import { credentialsSchema, registrationSchema, registrationChallengeSchema } from "./validation";
 import type { User } from "@/domain/models";
+import { registrationImage } from "./registration-image";
 type UserRow = {
   id: string;
   email: string;
@@ -22,10 +23,55 @@ export const cookieOptions = {
   secure: process.env.NODE_ENV === "production",
   path: "/",
 };
-function digest(value: string) {
+export function digest(value: string) {
   const secret = process.env.AUTH_SECRET;
   if (!secret || secret.length < 32) throw new Error("AUTH_SECRET cần tối thiểu 32 ký tự.");
   return createHmac("sha256", secret).update(value).digest("hex");
+}
+const challengeAlphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+function randomChallengeCode(length = 4) {
+  const bytes = randomBytes(length);
+  return Array.from(bytes, (b) => challengeAlphabet[b % challengeAlphabet.length]).join("");
+}
+function randomReferralCode() {
+  return `CVJ-${randomBytes(5).toString("hex").toUpperCase()}`;
+}
+export async function createRegistrationChallenge() {
+  const id = randomUUID(),
+    code = randomChallengeCode(),
+    expires = new Date(Date.now() + 5 * 60 * 1000);
+  const image = await registrationImage(code);
+  await database().execute(
+    sql`INSERT INTO cinevjet.registration_challenges(id,code_hash,expires_at) VALUES(${id},${digest(`${id}:${code}`)},${expires})`,
+  );
+  return { id, image, expires_at: expires.toISOString() };
+}
+export async function verifyRegistrationChallenge(input: unknown) {
+  const data = registrationChallengeSchema.parse(input);
+  const failure = await database().transaction(async (tx) => {
+    const row = (
+      await tx.execute(
+        sql`SELECT id,code_hash,attempts,expires_at,used_at FROM cinevjet.registration_challenges WHERE id=${data.id} FOR UPDATE`,
+      )
+    ).rows[0] as Record<string, unknown> | undefined;
+    if (!row || row.used_at || new Date(String(row.expires_at)).getTime() <= Date.now())
+      return new ApiError(400, "Mã xác minh đã hết hạn. Hãy lấy mã mới.");
+    if (Number(row.attempts) >= 5)
+      return new ApiError(429, "Mã xác minh đã bị khóa. Hãy lấy mã mới.");
+    const valid = digest(`${data.id}:${data.code}`) === String(row.code_hash);
+    if (!valid) {
+      await tx.execute(
+        sql`UPDATE cinevjet.registration_challenges SET attempts=attempts+1 WHERE id=${data.id}`,
+      );
+      return new ApiError(400, "Mã xác minh không đúng.");
+    }
+    await tx.execute(
+      sql`UPDATE cinevjet.registration_challenges SET used_at=now() WHERE id=${data.id}`,
+    );
+    return null;
+  });
+  // Throw after commit so rejected answers retain their attempt counter.
+  if (failure) throw failure;
 }
 function publicUser(row: UserRow): User {
   return {
@@ -46,23 +92,61 @@ function newSession(remember = true) {
     expires: new Date(Date.now() + seconds * 1000),
   };
 }
-export async function throttleAuth(identity: string, limit = 15) {
+export async function throttleAuth(identity: string, limit = 15, windowMinutes = 15) {
   const key = digest(`auth:${identity}`);
   const result = await database()
     .execute(sql`INSERT INTO cinevjet.auth_limits(key,attempts,window_start) VALUES(${key},1,now())
-    ON CONFLICT(key) DO UPDATE SET attempts = CASE WHEN cinevjet.auth_limits.window_start < now() - interval '15 minutes' THEN 1 ELSE cinevjet.auth_limits.attempts + 1 END,
-    window_start = CASE WHEN cinevjet.auth_limits.window_start < now() - interval '15 minutes' THEN now() ELSE cinevjet.auth_limits.window_start END RETURNING attempts`);
+    ON CONFLICT(key) DO UPDATE SET attempts = CASE WHEN cinevjet.auth_limits.window_start < now() - (${windowMinutes}::int * interval '1 minute') THEN 1 ELSE LEAST(${limit + 1},cinevjet.auth_limits.attempts + 1) END,
+    window_start = CASE WHEN cinevjet.auth_limits.window_start < now() - (${windowMinutes}::int * interval '1 minute') THEN now() ELSE cinevjet.auth_limits.window_start END RETURNING attempts,GREATEST(1,ceil(extract(epoch FROM window_start+(${windowMinutes}::int*interval '1 minute')-now()))) AS retry_after`);
   if (Number(result.rows[0]?.attempts) > limit)
-    throw new ApiError(429, "Quá nhiều lần thử. Vui lòng thử lại sau 15 phút.");
+    throw new ApiError(
+      429,
+      `Quá nhiều lần thử. Vui lòng thử lại sau ${windowMinutes < 60 ? `${windowMinutes} phút` : `${windowMinutes / 60} giờ`}.`,
+      Number(result.rows[0]?.retry_after || windowMinutes * 60),
+    );
+}
+export function registrationEmailIdentity(email: string) {
+  const [local, domain] = email.trim().toLowerCase().split("@");
+  return domain === "gmail.com" || domain === "googlemail.com"
+    ? `${local.split("+")[0].replaceAll(".", "")}@gmail.com`
+    : `${local}@${domain}`;
+}
+export async function throttleRegistration(email: string, ip: string) {
+  await throttleAuth(`registration:ip:hour:${ip}`, 5, 60);
+  await throttleAuth(`registration:ip:day:${ip}`, 10, 1440);
+  await throttleAuth(`registration:email:${registrationEmailIdentity(email)}`, 3, 60);
 }
 export async function register(input: unknown) {
   const data = registrationSchema.parse(input);
   const passwordHash = await hash(data.password, 12);
   const session = newSession(data.remember);
   const user = await database().transaction(async (tx) => {
+    const identity = registrationEmailIdentity(data.email);
+    if (identity.endsWith("@gmail.com")) {
+      // Serialize Gmail aliases without changing existing user emails or financial data.
+      const lockKey = digest(`registration-identity:${identity}`);
+      await tx.execute(sql`INSERT INTO cinevjet.auth_limits(key,attempts,window_start) VALUES(${lockKey},0,now())
+        ON CONFLICT(key) DO UPDATE SET attempts=cinevjet.auth_limits.attempts`);
+      const existing = await tx.execute(sql`SELECT id FROM cinevjet.users
+        WHERE lower(split_part(email,'@',2)) IN ('gmail.com','googlemail.com')
+        AND replace(split_part(split_part(lower(email),'@',1),'+',1),'.','')=${identity.split("@")[0]}
+        LIMIT 1`);
+      if (existing.rows.length) throw new ApiError(409, "Email đã được sử dụng.");
+    }
     const id = randomUUID();
+    let referredBy: string | null = null;
+    if (data.referral_code) {
+      const referrer = (
+        await tx.execute(
+          sql`SELECT id FROM cinevjet.users WHERE referral_code=${data.referral_code} AND status='ACTIVE' LIMIT 1`,
+        )
+      ).rows[0];
+      if (!referrer) throw new ApiError(400, "Mã giới thiệu không tồn tại.");
+      referredBy = String(referrer.id);
+    }
+    const referralCode = randomReferralCode();
     const result =
-      await tx.execute(sql`INSERT INTO cinevjet.users(id,email,password_hash,display_name) VALUES(${id},${data.email},${passwordHash},${data.display_name})
+      await tx.execute(sql`INSERT INTO cinevjet.users(id,email,password_hash,display_name,referral_code,referred_by) VALUES(${id},${data.email},${passwordHash},${data.display_name},${referralCode},${referredBy})
       ON CONFLICT(email) DO NOTHING RETURNING id,email,display_name,avatar_url`);
     if (!result.rows.length) throw new ApiError(409, "Email đã được sử dụng.");
     await tx.execute(sql`INSERT INTO cinevjet.coin_wallets(user_id) VALUES(${id})`);
