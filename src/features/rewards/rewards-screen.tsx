@@ -66,7 +66,7 @@ export function DailyCheckIn({
       <button
         className="button primary wide"
         aria-busy={pending}
-        disabled={pending || !available}
+        disabled={pending || !enabled || !available}
         onClick={onClaim}
       >
         {pending
@@ -132,15 +132,18 @@ export function RewardsScreen({
   data: initial,
   missions: initialMissions,
 }: {
-  data: RewardsState;
-  missions: DailyMissionsState;
+  data: RewardsState | null;
+  missions: DailyMissionsState | null;
 }) {
   const params = useSearchParams();
   const history = params.get("view") === "history";
   const [data, setData] = useState(initial);
   const [pending, setPending] = useState(false);
-  const [error, setError] = useState("");
+  const [error, setError] = useState(initial ? "" : "Chưa tải được điểm danh. Vui lòng thử lại.");
   const [missions, setMissions] = useState(initialMissions);
+  const [missionError, setMissionError] = useState(
+    initialMissions ? "" : "Chưa tải được nhiệm vụ. Vui lòng thử lại.",
+  );
   const [missionPending, setMissionPending] = useState("");
   const missionGeneration = useRef(0);
   const { refreshAccount } = useApp();
@@ -156,15 +159,27 @@ export function RewardsScreen({
       if (document.visibilityState !== "visible") return;
       const generation = missionGeneration.current;
       try {
-        const [rewards, state] = await Promise.all([
+        const [rewards, state] = await Promise.allSettled([
           requestJson<RewardsState>("/api/rewards"),
           history
             ? Promise.resolve(null)
             : requestJson<DailyMissionsState>("/api/rewards/missions"),
         ]);
         if (!disposed && generation === missionGeneration.current) {
-          setData(rewards);
-          if (state) setMissions(state);
+          if (rewards.status === "fulfilled") {
+            setData(rewards.value);
+            setError("");
+          } else
+            setError(
+              rewards.reason instanceof Error ? rewards.reason.message : "Chưa tải được điểm danh.",
+            );
+          if (state.status === "fulfilled") {
+            if (state.value) setMissions(state.value);
+            setMissionError("");
+          } else
+            setMissionError(
+              state.reason instanceof Error ? state.reason.message : "Chưa tải được nhiệm vụ.",
+            );
         }
       } catch {
         /* Existing, real progress remains visible; a claim always revalidates server-side. */
@@ -182,10 +197,10 @@ export function RewardsScreen({
     };
   }, [history]);
   async function receiveMission(id: string) {
-    if (missionPending) return;
+    if (missionPending || !missions) return;
     missionGeneration.current++;
     setMissionPending(id);
-    setError("");
+    setMissionError("");
     try {
       setMissions(
         await requestJson<DailyMissionsState>("/api/rewards/missions", {
@@ -193,15 +208,37 @@ export function RewardsScreen({
           body: JSON.stringify({ mission_id: id, calendar_date: missions.calendar_date }),
         }),
       );
-      setData(await requestJson<RewardsState>("/api/rewards"));
-      await refreshAccount();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Chưa nhận được xu. Vui lòng thử lại.");
+      setMissionError(e instanceof Error ? e.message : "Chưa nhận được xu. Vui lòng thử lại.");
       try {
-        setMissions(await requestJson<DailyMissionsState>("/api/rewards/missions"));
+        const actual = await requestJson<DailyMissionsState>("/api/rewards/missions");
+        setMissions(actual);
+        if (actual.missions.find((m) => m.id === id)?.status === "CLAIMED") setMissionError("");
       } catch {}
     } finally {
+      await reloadBalance();
       missionGeneration.current++;
+      setMissionPending("");
+    }
+  }
+  async function reloadBalance() {
+    try {
+      setData(await requestJson<RewardsState>("/api/rewards"));
+      setError("");
+      await refreshAccount();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Chưa tải được số dư.");
+    }
+  }
+  async function retryMissions() {
+    if (missionPending) return;
+    setMissionPending("retry");
+    try {
+      setMissions(await requestJson<DailyMissionsState>("/api/rewards/missions"));
+      setMissionError("");
+    } catch (e) {
+      setMissionError(e instanceof Error ? e.message : "Chưa tải được nhiệm vụ.");
+    } finally {
       setMissionPending("");
     }
   }
@@ -211,9 +248,25 @@ export function RewardsScreen({
     setPending(true);
     setError("");
     try {
-      setData(await requestJson<RewardsState>("/api/rewards", { method }));
+      setData(
+        await requestJson<RewardsState>("/api/rewards", {
+          method,
+          ...(method === "POST" ? { body: "{}" } : {}),
+        }),
+      );
+      if (method === "POST") await refreshAccount();
     } catch (error) {
       setError(error instanceof Error ? error.message : "Không nhận được xu.");
+      if (method === "POST") {
+        try {
+          const actual = await requestJson<RewardsState>("/api/rewards");
+          setData(actual);
+          if (actual.claimed_today) {
+            setError("");
+            await refreshAccount();
+          }
+        } catch {}
+      }
     } finally {
       missionGeneration.current++;
       setPending(false);
@@ -324,24 +377,6 @@ export function RewardsScreen({
                   enabled={data.enabled}
                   onClaim={() => request("POST")}
                 />
-                {missions.missions.length ? (
-                  <DailyMissions
-                    data={missions}
-                    pending={missionPending}
-                    onClaim={receiveMission}
-                  />
-                ) : null}
-                <RewardCodeRedeem
-                  onRedeemed={async () => {
-                    missionGeneration.current++;
-                    try {
-                      setData(await requestJson<RewardsState>("/api/rewards"));
-                      await refreshAccount();
-                    } finally {
-                      missionGeneration.current++;
-                    }
-                  }}
-                />
               </>
             )}
           </>
@@ -349,6 +384,35 @@ export function RewardsScreen({
           <>
             <Skeleton className="skeleton-hero" />
             <Skeleton className="skeleton-hero" />
+          </>
+        ) : null}
+        {!history ? (
+          <>
+            {missionError ? (
+              <div role="alert">
+                <p className="form-error">{missionError}</p>
+                <button
+                  className="button secondary"
+                  disabled={Boolean(missionPending)}
+                  onClick={retryMissions}
+                >
+                  Thử lại nhiệm vụ
+                </button>
+              </div>
+            ) : null}
+            {missions?.missions.length ? (
+              <DailyMissions data={missions} pending={missionPending} onClaim={receiveMission} />
+            ) : null}
+            <RewardCodeRedeem
+              onRedeemed={async () => {
+                missionGeneration.current++;
+                try {
+                  await reloadBalance();
+                } finally {
+                  missionGeneration.current++;
+                }
+              }}
+            />
           </>
         ) : null}
       </div>

@@ -99,6 +99,27 @@ export async function movieEpisodes(id: string): Promise<Episode[]> {
     release_date: r.release_date ? String(r.release_date) : "",
   }));
 }
+// Public provenance only; playback URLs, disabled sources and unpublished episodes stay private.
+export async function movieSourceCredits(id: string) {
+  const rows = await database()
+    .execute(sql`SELECT s.id,s.provenance,e.title AS episode_title,e.episode_number
+    FROM cinevjet.video_sources s LEFT JOIN cinevjet.episodes e ON e.id=s.episode_id
+    WHERE s.movie_id=${id} AND s.is_active AND (s.episode_id IS NULL OR e.status='PUBLISHED') ORDER BY e.episode_number NULLS FIRST,s.id`);
+  return rows.rows.flatMap((r) => {
+    const credit = publicSourceCredit(r.provenance);
+    return credit?.license_name
+      ? [
+          {
+            id: String(r.id),
+            title: r.episode_number
+              ? `Tập ${r.episode_number}${r.episode_title ? ` · ${r.episode_title}` : ""}`
+              : "Nguồn phim",
+            credit,
+          },
+        ]
+      : [];
+  });
+}
 export async function relatedMovies(id: string) {
   return list(
     sql`m.id<>${id} AND EXISTS(SELECT 1 FROM cinevjet.movie_genres a JOIN cinevjet.movie_genres b ON a.genre_id=b.genre_id WHERE a.movie_id=m.id AND b.movie_id=${id})`,

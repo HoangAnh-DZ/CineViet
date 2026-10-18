@@ -19,7 +19,7 @@ export async function POST(request: Request) {
     if (request.body)
       z.object({})
         .strict()
-        .parse(await readBody(request));
+        .parse(await readBody(request, 8192, true));
     return json(await claimDailyCheckIn(user.id));
   } catch (error) {
     return failure(error);

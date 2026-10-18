@@ -1460,9 +1460,11 @@ body .cinematic-discover .hero.cinematic-hero {
 }
 
 /* Compact credits and account forms share the existing app typography. */
-.movie-credit { margin: 20px 0; padding: 12px 16px; border-radius: 12px; font-size: 12px; line-height: 1.6; min-height: 0; }
-.movie-credit summary { cursor: pointer; font-weight: 750; }
-.movie-credit p { margin: 8px 0 0; overflow-wrap: anywhere; }
+.movie-credit-link { display: inline-block; font-size: 12px; margin: 4px 0; color: var(--muted); text-decoration: underline; text-underline-offset: 3px; }
+.copyright-page { line-height: 1.7; overflow-wrap: anywhere; }
+.copyright-page section { margin-top: 24px; }
+.copyright-links { display: flex; flex-wrap: wrap; gap: 8px 18px; }
+.copyright-links a { text-decoration: underline; text-underline-offset: 3px; }
 .account-settings { display: grid; gap: 24px; }
 .account-section { display: grid; gap: 14px; padding: 0 0 22px; border-bottom: 1px solid var(--border, #29333f); }
 .account-section h3 { margin: 0; }

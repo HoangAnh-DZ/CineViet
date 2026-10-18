@@ -15,14 +15,29 @@ export async function requestJson<T>(url: string, options: RequestInit = {}): Pr
       cache: "no-store",
       headers: { "Content-Type": "application/json", ...options.headers },
     });
+    if (
+      (response.status === 401 &&
+        !new URL(url, "https://same-origin.invalid").pathname.startsWith("/api/auth/")) ||
+      (response.redirected && /\/login\/?$/.test(new URL(response.url).pathname))
+    )
+      throw new Error("Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.");
     let data;
     try {
-      data = await response.json();
+      if (!/\bapplication\/(?:[\w.+-]+\+)?json\b/i.test(response.headers.get("Content-Type") || ""))
+        throw new Error("Unexpected response type");
+      const text = await response.text();
+      if (!text.trim()) throw new Error("Empty response");
+      data = JSON.parse(text);
     } catch (error) {
       if (options.signal?.aborted) throw error;
       throw new Error(unavailable);
     }
-    if (!response.ok) throw new Error(typeof data?.error === "string" ? data.error : unavailable);
+    if (!response.ok)
+      throw new Error(
+        typeof data?.error === "string" && data.error.length <= 240 && !/[<>]/.test(data.error)
+          ? data.error
+          : unavailable,
+      );
     return data as T;
   } catch (error) {
     if (options.signal?.aborted) throw error;

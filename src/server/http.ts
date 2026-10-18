@@ -20,7 +20,7 @@ export function checkOrigin(request: Request) {
   if (request.headers.get("origin") !== origin) throw new ApiError(403, "Yêu cầu không hợp lệ.");
   return origin;
 }
-export async function readBody(request: Request, maxLength = 8192) {
+export async function readBody(request: Request, maxLength = 8192, allowEmptyObject = false) {
   if (
     request.headers.get("content-type")?.split(";")[0].trim().toLowerCase() !== "application/json"
   )
@@ -46,6 +46,8 @@ export async function readBody(request: Request, maxLength = 8192) {
   }
   try {
     const raw = new TextDecoder("utf-8", { fatal: true }).decode(Buffer.concat(chunks, size));
+    // Only explicitly opted-in legacy endpoints accept a zero-byte body.
+    if (allowEmptyObject && size === 0) return {};
     return JSON.parse(raw) as unknown;
   } catch {
     throw new ApiError(400, "JSON không hợp lệ.");
