@@ -5,6 +5,8 @@ import { DashboardHeading } from "./dashboard-screen";
 import { ReportMode } from "./reporting-controls";
 import { requestJson } from "@/services/client";
 import { formatMoney } from "@/lib/format";
+import { Modal } from "@/components/ui";
+import { MAX_REFERRAL_BPS } from "@/domain/referral-policy";
 import type { ReferralAdminData } from "@/server/referral-reporting";
 export function ReferralsScreen({ data }: { data: ReferralAdminData }) {
   const router = useRouter(),
@@ -21,14 +23,18 @@ export function ReferralsScreen({ data }: { data: ReferralAdminData }) {
   }, [data.policy]);
   const bps = rates.map((v) => Math.round(Number(v) * 100));
   const total = bps.reduce((a, b) => a + b, 0),
-    valid =
-      rates.every((v) => v !== "" && /^\d+(\.\d{1,2})?$/.test(v) && Number(v) <= 100) &&
-      total <= policy.cap_bps;
-  async function save(e: FormEvent) {
+    valid = rates.every(
+      (v, i) =>
+        /^\d+(\.\d{1,2})?$/.test(v) && Number.isSafeInteger(bps[i]) && bps[i] <= MAX_REFERRAL_BPS,
+    );
+  function save(e: FormEvent) {
     e.preventDefault();
     setError("");
     setMessage("");
-    if (!confirmed || !valid) return;
+    if (valid) setConfirmed(true);
+  }
+  async function apply() {
+    if (!confirmed || !valid || busy) return;
     setBusy(true);
     try {
       const p = await requestJson<typeof policy>("/api/admin/referrals", {
@@ -43,7 +49,7 @@ export function ReferralsScreen({ data }: { data: ReferralAdminData }) {
       setPolicy(p);
       setConfirmed(false);
       setReason("");
-      setMessage("Đã lưu. Chỉ áp dụng cho đơn VIP tạo sau thời điểm này.");
+      setMessage("Đã lưu tỷ lệ hoa hồng.");
       router.refresh();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Không lưu được cấu hình.");
@@ -62,7 +68,6 @@ export function ReferralsScreen({ data }: { data: ReferralAdminData }) {
         <div className="dashboard-panel-heading">
           <div>
             <h2>Cấu hình hoa hồng</h2>
-            <p>Giới hạn đã duyệt: {policy.cap_bps / 100}%. Đơn cũ giữ tỷ lệ khi tạo.</p>
           </div>
           <strong>Tổng: {total / 100}%</strong>
         </div>
@@ -78,7 +83,6 @@ export function ReferralsScreen({ data }: { data: ReferralAdminData }) {
                     aria-label={`Hoa hồng F${i + 1} (%)`}
                     type="number"
                     min="0"
-                    max="100"
                     step="0.01"
                     required
                     value={value}
@@ -92,9 +96,6 @@ export function ReferralsScreen({ data }: { data: ReferralAdminData }) {
               </label>
             ))}
           </div>
-          {!policy.multilevel_approved ? (
-            <p className="helper">F2/F3 cần phê duyệt ngân sách trước khi bật.</p>
-          ) : null}
           <label className="admin-form-field">
             <span>Lý do thay đổi</span>
             <input
@@ -106,18 +107,9 @@ export function ReferralsScreen({ data }: { data: ReferralAdminData }) {
               onChange={(e) => setReason(e.target.value)}
             />
           </label>
-          <label className="referral-confirm">
-            <input
-              type="checkbox"
-              checked={confirmed}
-              onChange={(e) => setConfirmed(e.target.checked)}
-            />
-            Tôi xác nhận tỷ lệ mới chỉ áp dụng cho đơn tạo sau khi lưu. Đơn đang chờ thanh toán giữ
-            tỷ lệ cũ.
-          </label>
           {!valid ? (
             <p role="alert" className="form-error">
-              Nhập tỷ lệ hợp lệ, tổng không vượt {policy.cap_bps / 100}%.
+              Nhập tỷ lệ không âm, tối đa hai chữ số thập phân và trong phạm vi lưu trữ.
             </p>
           ) : null}
           {error ? (
@@ -133,12 +125,33 @@ export function ReferralsScreen({ data }: { data: ReferralAdminData }) {
                 timeZone: "Asia/Ho_Chi_Minh",
               })}
             </small>
-            <button className="button primary" disabled={!confirmed || !valid || busy}>
+            <button className="button primary" disabled={!valid || busy}>
               {busy ? "Đang lưu…" : "Lưu thay đổi"}
             </button>
           </div>
         </fieldset>
       </form>
+      {confirmed ? (
+        <Modal title="Xác nhận tỷ lệ hoa hồng" onClose={() => !busy && setConfirmed(false)}>
+          <p>
+            F1 {rates[0]}% · F2 {rates[1]}% · F3 {rates[2]}%
+          </p>
+          <p>
+            <strong>
+              Tổng {total / 100}%{total > 10000 ? " — vượt 100%" : ""}
+            </strong>
+          </p>
+          <p>Áp dụng cho đơn VIP mới. Đơn đã tạo giữ tỷ lệ cũ.</p>
+          {error ? (
+            <p role="alert" className="form-error">
+              {error}
+            </p>
+          ) : null}
+          <button className="button primary wide" disabled={busy} onClick={() => void apply()}>
+            {busy ? "Đang lưu…" : "Xác nhận"}
+          </button>
+        </Modal>
+      ) : null}
       <div className="dashboard-segment referral-periods">
         {[
           ["TODAY", "Hôm nay"],
@@ -194,7 +207,6 @@ export function ReferralsScreen({ data }: { data: ReferralAdminData }) {
         <div className="dashboard-panel-heading">
           <div>
             <h2>Xếp hạng người giới thiệu</h2>
-            <p>Ví đã ghi có; chưa thể phân bổ khoản rút bên ngoài riêng cho hoa hồng.</p>
           </div>
         </div>
         <div className="referral-rankings">
@@ -230,7 +242,7 @@ export function ReferralsScreen({ data }: { data: ReferralAdminData }) {
         <div className="dashboard-panel-heading">
           <div>
             <h2>Lịch sử ghi có</h2>
-            <p>100 bản ghi mới nhất trong kỳ; đã đối chiếu ledger.</p>
+            <p>30 bản ghi gần nhất.</p>
           </div>
         </div>
         <div className="referral-rankings">
@@ -240,9 +252,7 @@ export function ReferralsScreen({ data }: { data: ReferralAdminData }) {
                 <strong>{r.beneficiary_name}</strong>
                 <small>
                   Người mua: {r.buyer_name} ·{" "}
-                  <a
-                    href={`/admin/finance?kind=VIP_PURCHASE&id=${encodeURIComponent(r.source_id)}`}
-                  >
+                  <a href={`/admin?kind=VIP_PURCHASE&id=${encodeURIComponent(r.source_id)}`}>
                     {r.source_id.slice(0, 8)}
                   </a>{" "}
                   ·{" "}

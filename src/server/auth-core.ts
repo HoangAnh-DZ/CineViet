@@ -81,7 +81,7 @@ function publicUser(row: UserRow): User {
     ...(row.avatar_url ? { avatar: row.avatar_url } : {}),
   };
 }
-function newSession(remember = true) {
+export function newSession(remember = true) {
   const token = randomBytes(32).toString("base64url");
   const seconds = remember ? 30 * 86400 : 86400;
   return {
@@ -170,9 +170,22 @@ export async function login(input: unknown) {
   if (!row || !valid || row.status !== "ACTIVE")
     throw new ApiError(401, "Email hoặc mật khẩu không đúng.");
   const session = newSession(data.remember);
-  await database().execute(
-    sql`INSERT INTO cinevjet.sessions(id,user_id,token_hash,expires_at) VALUES(${session.id},${row.id},${session.tokenHash},${session.expires})`,
-  );
+  await database().transaction(async (tx) => {
+    const latest = (
+      await tx.execute(
+        sql`SELECT email,password_hash,status FROM cinevjet.users WHERE id=${row.id} FOR SHARE`,
+      )
+    ).rows[0];
+    if (
+      latest?.password_hash !== row.password_hash ||
+      latest.status !== "ACTIVE" ||
+      latest.email !== row.email
+    )
+      throw new ApiError(401, "Email hoặc mật khẩu không đúng.");
+    await tx.execute(
+      sql`INSERT INTO cinevjet.sessions(id,user_id,token_hash,expires_at) VALUES(${session.id},${row.id},${session.tokenHash},${session.expires})`,
+    );
+  });
   return { user: publicUser(row), session };
 }
 export async function resolveSession(token: string | undefined): Promise<User | null> {

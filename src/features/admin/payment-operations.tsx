@@ -214,7 +214,7 @@ export function PaymentOperations({ withdrawals = false }: { withdrawals?: boole
                     <td>{j.provider_id || j.last_error_code || "—"}</td>
                     <td>
                       <Link
-                        href={`/admin/finance?view=withdrawals&kind=WITHDRAWAL&id=${encodeURIComponent(j.withdrawal_id)}`}
+                        href={`/admin?view=withdrawals&kind=WITHDRAWAL&id=${encodeURIComponent(j.withdrawal_id)}`}
                       >
                         Chi tiết
                       </Link>

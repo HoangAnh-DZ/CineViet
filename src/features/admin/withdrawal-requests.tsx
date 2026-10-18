@@ -33,7 +33,7 @@ export function WithdrawalRequests({
   }, [router]);
   function pageUrl(page: number) {
     const query = new URLSearchParams({ view: "withdrawals", ...data.filters, page: String(page) });
-    return `/admin/finance?${query}`;
+    return `/admin?${query}`;
   }
   return (
     <>
@@ -62,7 +62,7 @@ export function WithdrawalRequests({
         </div>
         <form
           className="admin-filters finance-filters"
-          action="/admin/finance"
+          action="/admin"
           key={JSON.stringify(data.filters)}
         >
           <input type="hidden" name="view" value="withdrawals" />
@@ -93,7 +93,7 @@ export function WithdrawalRequests({
             defaultValue={data.filters.q}
           />
           <button className="button secondary">Lọc</button>
-          <Link className="button secondary" href="/admin/finance?view=withdrawals">
+          <Link className="button secondary" href="/admin?view=withdrawals">
             Đặt lại
           </Link>
         </form>

@@ -83,7 +83,6 @@ export function ReferralScreen({
         <section className="referral-statistics" aria-label="Thống kê giới thiệu">
           {[
             ["Tổng thành viên", data.stats.total],
-            ["Đã nạp ví", data.stats.funded],
             ["F1 · Trực tiếp", data.stats.level1],
             ["F2 · Do F1 mời", data.stats.level2],
             ["F3 · Do F2 mời", data.stats.level3],
@@ -104,16 +103,28 @@ export function ReferralScreen({
               <div key={i}>
                 <span>F{i + 1}</span>
                 <strong>{value}%</strong>
-                <small>{formatMoney(data.credited[`f${i + 1}`] || 0)} đã ghi có</small>
               </div>
             ))}
           </div>
-          <p className="helper">
-            Hoa hồng ghi có vào ví VND khi VIP thanh toán hợp lệ. Tỷ lệ chốt khi tạo đơn; đơn đang
-            chờ giữ tỷ lệ cũ.
-          </p>
         </section>
         <p className="helper">Tổng hoa hồng đã ghi có: {formatMoney(data.credited.total || 0)}</p>
+        <section className="product-panel">
+          <h2>Lịch sử hoa hồng</h2>
+          {data.commissionHistory.length ? (
+            <ul className="referral-member-list">
+              {data.commissionHistory.map((h) => (
+                <li key={h.id}>
+                  <span>
+                    F{h.level} · {new Date(h.created_at).toLocaleDateString("vi-VN")}
+                  </span>
+                  <strong>{formatMoney(h.amount)}</strong>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="helper">Chưa có hoa hồng.</p>
+          )}
+        </section>
         <section className="product-panel referral-members">
           <h2>Thành viên</h2>
           <div className="referral-tabs" role="group" aria-label="Lọc cấp thành viên">

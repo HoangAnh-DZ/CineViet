@@ -39,17 +39,16 @@ export function CashReportNotes({ data }: { data: DashboardData }) {
     <>
       <DashboardRefresh revision={data.reportRevision} reportedAt={data.reportedAt} />
       <ReportMode mode={data.reportMode} />
-      <p className="chart-footnote">
-        {data.reportMode === "BUSINESS"
-          ? "Chỉ loại các giao dịch có xác nhận phân loại."
-          : "Bao gồm cả giao dịch được xác nhận là test."}{" "}
-        {data.reportQuality.excluded} giao dịch có xác nhận loại trừ. Hoàn tiền/điều chỉnh chưa có
-        nguồn dữ liệu cấu trúc; số liệu không phải lợi nhuận ròng.
-      </p>
+      <details className="report-details">
+        <summary>{data.reportQuality.excluded} lệnh test · Chi tiết báo cáo</summary>
+        <p>
+          Chế độ Toàn bộ giữ các lệnh test; Kinh doanh loại lệnh đã xác nhận. Chênh lệch thu − chi
+          chưa gồm chi phí vận hành hoặc hoàn tiền chưa có dữ liệu.
+        </p>
+      </details>
       {data.reportQuality.ledger_mismatches ? (
         <p role="alert" className="form-error">
-          {data.reportQuality.ledger_mismatches} giao dịch chưa khớp ledger/quyền lợi. Cần đối soát;
-          số tiền nguồn được giữ nguyên.
+          {data.reportQuality.ledger_mismatches} giao dịch cần đối soát quyền lợi hoặc số dư.
         </p>
       ) : null}
       {data.reportQuality.unverified ? (

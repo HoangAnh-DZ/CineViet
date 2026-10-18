@@ -60,9 +60,12 @@ export function MovieDetail({
             ) : null}
             <div className="metadata">
               <RatingBadge rating={movie.rating} />
-              <span>• {movie.release_year}</span>
+              {movie.release_year ? <span>• {movie.release_year}</span> : null}
               <span>
-                • {movie.type === "SERIES" ? `${episodes.length} tập` : `${movie.duration} phút`}
+                •{" "}
+                {movie.type === "SERIES"
+                  ? `${episodes.length} tập`
+                  : `${movie.duration ? movie.duration + " phút" : ""}`}
               </span>
             </div>
             <div className="genre-tags">
@@ -93,12 +96,12 @@ export function MovieDetail({
       </div>
       <div className="content detail-content">
         <section className="detail-synopsis">
-          <SectionHeader title="Câu chuyện" />
+          <SectionHeader title="Nội dung" />
           <p
             id="movie-description"
             className={`description ${expanded || movie.description.length <= 180 ? "" : "clamped"}`}
           >
-            {movie.description}
+            {movie.description || "Chưa có mô tả."}
           </p>
           {movie.description.length > 180 ? (
             <button

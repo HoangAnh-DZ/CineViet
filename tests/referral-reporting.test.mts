@@ -29,11 +29,17 @@ import {
 import { signData } from "../src/server/payos-client";
 import { checkOrigin } from "../src/server/http";
 let owner: Pool | undefined, runtime: Pool | undefined, lite: PGlite | undefined;
-const role = "cinevjet_runtime_referrals_20261018";
+const role = process.env.REFERRAL_QA_ROLE || "cinevjet_runtime_referrals_20261018";
 if (process.env.REFERRAL_TEST_DATABASE_URL) {
   const url = new URL(process.env.REFERRAL_TEST_DATABASE_URL);
   assert.equal(url.hostname, "ep-late-credit-b3qu4dqn.c-4.ap-southeast-1.aws.neon.tech");
-  assert.equal(url.pathname, "/referral_reporting_20261018");
+  assert.match(
+    url.pathname,
+    /^\/(referral_reporting_20261018|financial_reporting_20261018_[a-f0-9]{8})$/,
+  );
+  assert.ok(
+    ["cinevjet_runtime_referrals_20261018", "cinevjet_runtime_finance_20261018"].includes(role),
+  );
   assert.equal(process.env.REFERRAL_QA_ROLE, role);
   const options = {
     connectionString: url.toString(),
@@ -169,41 +175,55 @@ test("F1/F2/F3 commissions and financial reports", async (t) => {
     ).rows[0];
     assert.ok(Object.values(f).every((v) => v === false));
   });
-  await t.test("Admin-only configuration, strict validation and approved 13% ceiling", async () => {
-    assert.deepEqual(policy.rates_bps, [1000, 200, 100]);
-    await assert.rejects(
-      adminReferralPolicy(regular),
-      (e) => (e as { status: number }).status === 403,
-    );
-    await assert.rejects(
-      updateReferralPolicy(regular, {}),
-      (e) => (e as { status: number }).status === 403,
-    );
-    const base = {
-      expected_version: policy.version,
-      rates_bps: [1000, 200, 100],
-      reason: "Valid QA policy edit",
-      confirmation: "CONFIRM_FUTURE_ORDERS",
-    };
-    for (const rates_bps of [
-      [9000, 2000, 0],
-      [-1, 0, 0],
-      [1000.5, 0, 0],
-    ])
-      assert.equal(referralPolicyInput.safeParse({ ...base, rates_bps }).success, false);
-    await assert.rejects(
-      updateReferralPolicy(admin, { ...base, rates_bps: [1000, 300, 100] }),
-      (e) => (e as { status: number }).status === 400,
-    );
-    assert.equal(referralPolicyInput.safeParse({ ...base, amount: 1 }).success, false);
-    assert.throws(() =>
-      checkOrigin(
-        new Request("https://cine-vjet.cyou/api/admin/referrals", {
-          headers: { Origin: "https://attacker.invalid" },
-        }),
-      ),
-    );
-  });
+  await t.test(
+    "Admin-only configuration, technical validation and rates above 13/100 percent",
+    async () => {
+      assert.deepEqual(policy.rates_bps, [1000, 200, 100]);
+      await assert.rejects(
+        adminReferralPolicy(regular),
+        (e) => (e as { status: number }).status === 403,
+      );
+      await assert.rejects(
+        updateReferralPolicy(regular, {}),
+        (e) => (e as { status: number }).status === 403,
+      );
+      const base = {
+        expected_version: policy.version,
+        rates_bps: [1000, 200, 100],
+        reason: "Valid QA policy edit",
+        confirmation: "CONFIRM_FUTURE_ORDERS",
+      };
+      for (const rates_bps of [
+        [2147483648, 0, 0],
+        [-1, 0, 0],
+        [1000.5, 0, 0],
+      ])
+        assert.equal(referralPolicyInput.safeParse({ ...base, rates_bps }).success, false);
+      for (const rates_bps of [
+        [2000, 200, 100],
+        [1500, 500, 300],
+        [2500, 1000, 500],
+        [12000, 200, 100],
+        [2025, 250, 125],
+      ]) {
+        policy = await updateReferralPolicy(admin, {
+          ...base,
+          expected_version: policy.version,
+          rates_bps,
+        });
+        assert.deepEqual(policy.rates_bps, rates_bps);
+      }
+      policy = await updateReferralPolicy(admin, { ...base, expected_version: policy.version });
+      assert.equal(referralPolicyInput.safeParse({ ...base, amount: 1 }).success, false);
+      assert.throws(() =>
+        checkOrigin(
+          new Request("https://cine-vjet.cyou/api/admin/referrals", {
+            headers: { Origin: "https://attacker.invalid" },
+          }),
+        ),
+      );
+    },
+  );
   await t.test("payment creation captures server ancestors and basis points", async () => {
     first = await order();
     const r = (

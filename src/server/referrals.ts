@@ -29,6 +29,7 @@ export async function referralDashboard(userId: string, filters: unknown = {}) {
       (SELECT jsonb_build_object('total',count(*),'funded',count(*) FILTER(WHERE funded),'level1',count(*) FILTER(WHERE level=1),'level2',count(*) FILTER(WHERE level=2),'level3',count(*) FILTER(WHERE level=3)) FROM members) AS stats,
       (SELECT count(*)::int FROM members WHERE (${level}=0 OR level=${level})) AS filtered_count,
       (SELECT jsonb_build_object('total',COALESCE(sum(amount),0),'f1',COALESCE(sum(amount) FILTER(WHERE level=1),0),'f2',COALESCE(sum(amount) FILTER(WHERE level=2),0),'f3',COALESCE(sum(amount) FILTER(WHERE level=3),0)) FROM ledger_credits WHERE beneficiary_id=${userId}) AS credited,
+      COALESCE((SELECT jsonb_agg(h) FROM (SELECT id,level,amount,created_at FROM ledger_credits WHERE beneficiary_id=${userId} ORDER BY created_at DESC,id LIMIT 30) h),'[]'::jsonb) AS commission_history,
       COALESCE((SELECT jsonb_agg(item ORDER BY item.created_at DESC,item.id) FROM (SELECT id,display_name,created_at,status,level,funded FROM members WHERE (${level}=0 OR level=${level}) ORDER BY created_at DESC,id LIMIT ${pageSize} OFFSET ${(page - 1) * pageSize}) item),'[]'::jsonb) AS members`)
       ).rows[0],
     { isolationLevel: "repeatable read", accessMode: "read only" },
@@ -54,6 +55,12 @@ export async function referralDashboard(userId: string, filters: unknown = {}) {
       status: "ACTIVE" as const,
       percentages: policy.rates_bps.map((value) => value / 100),
     },
+    commissionHistory: (row.commission_history as Record<string, unknown>[]).map((h) => ({
+      id: String(h.id),
+      level: Number(h.level),
+      amount: Number(h.amount),
+      created_at: new Date(h.created_at as string).toISOString(),
+    })),
     members: (row.members as Record<string, unknown>[]).map((member) => ({
       nickname: String(member.display_name),
       member_code: String(member.id).slice(0, 8).toUpperCase(),

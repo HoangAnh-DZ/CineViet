@@ -154,7 +154,7 @@ export function VipScreen({
               />
             ))}
         </div>
-        <p className="demo-note">1 xu = 1 VNĐ. Điểm danh hằng ngày áp dụng như gói Free.</p>
+
         {error ? (
           <p className="form-error" role="alert">
             {error}

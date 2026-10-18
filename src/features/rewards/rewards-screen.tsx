@@ -106,7 +106,7 @@ function RewardCodeRedeem({ onRedeemed }: { onRedeemed: () => Promise<void> }) {
   return (
     <section className="panel reward-code-panel">
       <SectionHeader title="Mã đổi thưởng" />
-      <p className="helper">Nhập mã quà tặng do CineVjet phát hành.</p>
+
       <form onSubmit={redeem} className="reward-code-form">
         <input
           className="field"

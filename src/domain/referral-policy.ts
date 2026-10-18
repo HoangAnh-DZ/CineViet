@@ -1,29 +1,28 @@
 import { z } from "zod";
+// PostgreSQL integer storage, not a business or budget limit.
+export const MAX_REFERRAL_BPS = 2147483647;
+export const referralRate = z.number().int().min(0).max(MAX_REFERRAL_BPS);
 export const referralPolicyInput = z
   .object({
     expected_version: z.string().min(1).max(100),
-    rates_bps: z.tuple([
-      z.number().int().min(0).max(10000),
-      z.number().int().min(0).max(10000),
-      z.number().int().min(0).max(10000),
-    ]),
+    rates_bps: z.tuple([referralRate, referralRate, referralRate]),
     reason: z.string().trim().min(10).max(500),
     confirmation: z.literal("CONFIRM_FUTURE_ORDERS"),
   })
-  .strict()
-  .refine((d) => d.rates_bps.reduce((a, b) => a + b, 0) <= 10000, {
-    message: "Tổng tỷ lệ không được vượt 100%.",
-  });
+  .strict();
 export function commissionAmount(amount: number, bps: number) {
   if (
     !Number.isSafeInteger(amount) ||
     amount < 0 ||
     !Number.isInteger(bps) ||
     bps < 0 ||
-    bps > 10000
+    bps > MAX_REFERRAL_BPS
   )
     throw new Error("Invalid commission basis");
-  return Number((BigInt(amount) * BigInt(bps)) / 10000n);
+  const value = (BigInt(amount) * BigInt(bps)) / 10000n;
+  if (value > BigInt(Number.MAX_SAFE_INTEGER))
+    throw new Error("Commission exceeds integer precision");
+  return Number(value);
 }
 export const reportFilters = z
   .object({

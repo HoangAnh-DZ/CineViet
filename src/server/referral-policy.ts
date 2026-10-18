@@ -4,12 +4,12 @@ import { sql } from "drizzle-orm";
 import { database } from "./db";
 import { assertAdmin } from "./admin-core";
 import { ApiError } from "./http";
-import { commissionAmount, referralPolicyInput } from "@/domain/referral-policy";
+import { commissionAmount, referralPolicyInput, referralRate } from "@/domain/referral-policy";
 type Executor = Pick<ReturnType<typeof database>, "execute">;
 export async function currentReferralPolicy(tx: Executor = database()) {
   const r = (
     await tx.execute(
-      sql`SELECT v.*,c.approved_total_bps,c.multilevel_approved,u.display_name AS editor FROM cinevjet.referral_policy_control c JOIN cinevjet.referral_policy_versions v ON v.id=c.active_version LEFT JOIN cinevjet.users u ON u.id=v.created_by WHERE c.id='default'`,
+      sql`SELECT v.*,u.display_name AS editor FROM cinevjet.referral_policy_control c JOIN cinevjet.referral_policy_versions v ON v.id=c.active_version LEFT JOIN cinevjet.users u ON u.id=v.created_by WHERE c.id='default'`,
     )
   ).rows[0];
   if (!r) throw new ApiError(503, "Chưa tải được cấu hình hoa hồng.");
@@ -20,8 +20,6 @@ export async function currentReferralPolicy(tx: Executor = database()) {
       number,
       number,
     ],
-    cap_bps: Number(r.approved_total_bps),
-    multilevel_approved: Boolean(r.multilevel_approved),
     editor: r.editor ? String(r.editor) : null,
     updated_at: new Date(r.created_at as string).toISOString(),
   };
@@ -41,10 +39,6 @@ export async function updateReferralPolicy(actor: string, input: unknown) {
     ).rows[0];
     if (c.active_version !== d.expected_version)
       throw new ApiError(409, "Cấu hình đã đổi. Hãy tải lại trang.");
-    if (d.rates_bps.reduce((a, b) => a + b, 0) > Number(c.approved_total_bps))
-      throw new ApiError(400, "Tổng tỷ lệ vượt giới hạn kinh tế đã được phê duyệt.");
-    if (!c.multilevel_approved && (d.rates_bps[1] > 0 || d.rates_bps[2] > 0))
-      throw new ApiError(409, "Cấp 2/3 cần phê duyệt ngân sách trước khi kích hoạt.");
     const id = randomUUID();
     await tx.execute(
       sql`INSERT INTO cinevjet.referral_policy_versions(id,previous_id,level1_bps,level2_bps,level3_bps,created_by,reason) VALUES(${id},${c.active_version},${d.rates_bps[0]},${d.rates_bps[1]},${d.rates_bps[2]},${actor},${d.reason})`,
@@ -68,14 +62,13 @@ export async function settleReferralCommission(tx: Executor, id: string) {
   const s = r.referral_snapshot as {
     version: string;
     rates_bps: number[];
-    cap_bps: number;
     beneficiaries: string[];
   };
   if (
     s.rates_bps.length !== 3 ||
     s.beneficiaries.length > 3 ||
     new Set([String(r.user_id), ...s.beneficiaries]).size !== s.beneficiaries.length + 1 ||
-    s.rates_bps.reduce((a, b) => a + b, 0) > s.cap_bps
+    s.rates_bps.some((bps) => !referralRate.safeParse(bps).success)
   )
     throw new ApiError(409, "Snapshot hoa hồng không hợp lệ.");
   // Stable lock ordering across overlapping referral trees avoids wallet deadlocks.

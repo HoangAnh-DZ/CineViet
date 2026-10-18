@@ -652,8 +652,8 @@ test("runtime role supports Admin code issue, credit, encrypted bank save and co
 });
 test("all API methods and database write sites are inventoried; direct sensitive methods retain server guards", async () => {
   const inventory = securityInventory();
-  assert.equal(new Set(inventory.routes.map((r: any) => r.path)).size, 52);
-  assert.equal(inventory.routes.length, 81);
+  assert.equal(new Set(inventory.routes.map((r: any) => r.path)).size, 53);
+  assert.equal(inventory.routes.length, 83);
   assert.deepEqual(inventory.serverActions, []);
   for (const route of inventory.routes) {
     if (route.path.startsWith("/api/demo/")) continue;

@@ -26,15 +26,13 @@ export function DashboardHeading({
   action,
 }: {
   title: string;
-  description: string;
+  description?: string;
   action?: React.ReactNode;
 }) {
   return (
     <header className="dashboard-heading">
       <div>
-        <p>QUẢN TRỊ</p>
         <h1>{title}</h1>
-        <span>{description}</span>
       </div>
       {action}
     </header>
@@ -59,7 +57,6 @@ export function MetricCards({
     <>
       {periods ? (
         <div className="money-period-heading">
-          <p>Tổng tiền từ giao dịch đã hoàn tất</p>
           <div className="dashboard-segment">
             {Object.entries(names).map(([id, label]) => (
               <button key={id} aria-pressed={period === id} onClick={() => setPeriod(id)}>
@@ -108,9 +105,6 @@ export function MetricCards({
               </i>
             </div>
             <strong>{value}</strong>
-            <small>
-              {note} · {names[period]}
-            </small>
           </article>
         ))}
       </div>
@@ -267,9 +261,6 @@ export function MoneyChart({
           Chưa có giao dịch thu/chi hoàn tất trong giai đoạn này.
         </p>
       ) : null}
-      <p className="chart-footnote">
-        Chênh lệch thu − chi chưa bao gồm chi phí vận hành và không thay thế báo cáo kế toán.
-      </p>
     </section>
   );
 }
@@ -378,7 +369,7 @@ export function TransactionsTable({
                 ) : (
                   <Link
                     className="money-table-detail"
-                    href={`/admin/finance?kind=${t.kind}&id=${encodeURIComponent(t.id)}`}
+                    href={`/admin?kind=${t.kind}&id=${encodeURIComponent(t.id)}`}
                   >
                     Xem chi tiết
                   </Link>
@@ -396,75 +387,6 @@ export function TransactionsTable({
         </div>
       ) : null}
     </div>
-  );
-}
-export function OverviewScreen({ data }: { data: DashboardData }) {
-  return (
-    <>
-      <DashboardHeading
-        title="Tổng quan"
-        description="Tình hình nền tảng, nội dung và dòng tiền tại một nơi."
-        action={
-          <Link className="button primary" href="/admin/videos">
-            <Clapperboard size={17} />
-            Quản lý video
-          </Link>
-        }
-      />
-      <CashReportNotes data={data} />
-      <MetricCards data={data.metrics} periods={data.moneyPeriods} />
-      <div className="dashboard-overview-grid">
-        <MoneyChart data={data.chart} monthlyData={data.monthlyChart} />
-        <section className="dashboard-panel">
-          <div className="dashboard-panel-heading">
-            <div>
-              <h2>Người dùng mới</h2>
-              <p>Thành viên tham gia gần đây</p>
-            </div>
-            <Link href="/admin/users">
-              <ArrowRight size={18} />
-            </Link>
-          </div>
-          <div className="new-users">
-            {data.users.map((u) => (
-              <div key={String(u.id)}>
-                <span className="user-monogram">
-                  {String(u.display_name).slice(0, 1).toUpperCase()}
-                </span>
-                <div>
-                  <strong>{String(u.display_name)}</strong>
-                  <small>{String(u.email)}</small>
-                </div>
-                <span>{String(u.created_at).slice(5, 10)}</span>
-              </div>
-            ))}
-          </div>
-          <div className="dashboard-content-count">
-            <Clapperboard size={19} />
-            <span>Phim đang phát hành</span>
-            <strong>{data.metrics.movies}</strong>
-          </div>
-          <Link href="/admin/rewards" className="dashboard-reward-link">
-            <Gift size={18} />
-            Theo dõi phần thưởng
-            <ArrowRight size={16} />
-          </Link>
-        </section>
-      </div>
-      <section className="dashboard-panel">
-        <div className="dashboard-panel-heading">
-          <div>
-            <h2>Giao dịch gần đây</h2>
-            <p>Theo dõi trạng thái thu và chi</p>
-          </div>
-          <Link href="/admin/finance">
-            Xem tất cả
-            <ArrowRight size={15} />
-          </Link>
-        </div>
-        <TransactionsTable items={data.transactions} />
-      </section>
-    </>
   );
 }
 export function FinanceScreen({
@@ -519,7 +441,7 @@ export function FinanceScreen({
   const isDepositView =
       activeFilter === "INCOMING" || activeFilter === "DEPOSIT" || activeFilter === "VIP_PURCHASE",
     isWithdrawalView = activeFilter === "WITHDRAWAL",
-    contextTitle = isDepositView ? "Nạp tiền" : isWithdrawalView ? "Rút tiền" : "Kinh tế",
+    contextTitle = isDepositView ? "Nạp tiền" : isWithdrawalView ? "Rút tiền" : "Tổng quan",
     contextDescription = isDepositView
       ? "Quản lý lệnh nạp tiền và theo dõi dòng tiền vào."
       : isWithdrawalView
@@ -545,27 +467,46 @@ export function FinanceScreen({
           <article>
             <span>Tổng lệnh</span>
             <strong>{visible.length}</strong>
-            <small>Trong 100 giao dịch mới nhất</small>
           </article>
           <article>
             <span>Chờ xử lý</span>
             <strong>{waiting.length}</strong>
-            <small>Cần kiểm tra hoặc duyệt</small>
           </article>
           <article>
             <span>Đã hoàn tất</span>
             <strong>{completed.length}</strong>
-            <small>Giao dịch thành công</small>
           </article>
           <article>
             <span>{isDepositView ? "Tiền vào" : "Tiền ra thực nhận"}</span>
             <strong>{formatMoney(scopedTotal)}</strong>
-            <small>Tổng lệnh đã hoàn tất</small>
           </article>
         </section>
       )}
       {activeFilter === "ALL" ? (
-        <MoneyChart data={data.chart} monthlyData={data.monthlyChart} />
+        <div className="dashboard-overview-grid">
+          <MoneyChart data={data.chart} monthlyData={data.monthlyChart} />
+          <section className="dashboard-panel">
+            <div className="dashboard-panel-heading">
+              <h2>Người dùng mới</h2>
+              <Link href="/admin/users">Xem tất cả</Link>
+            </div>
+            <div className="new-users">
+              {data.users.map((u) => (
+                <div key={u.id}>
+                  <span className="user-monogram">{u.display_name.slice(0, 1).toUpperCase()}</span>
+                  <div>
+                    <strong>{u.display_name}</strong>
+                    <small>{u.email}</small>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="dashboard-content-count">
+              <span>Phim đang phát hành</span>
+              <strong>{data.metrics.movies}</strong>
+            </div>
+          </section>
+        </div>
       ) : null}
       <section className="dashboard-panel">
         <div className="dashboard-panel-heading">
@@ -577,13 +518,6 @@ export function FinanceScreen({
                   ? "Lệnh rút tiền"
                   : "Lịch sử giao dịch"}
             </h2>
-            <p>
-              {isDepositView
-                ? "payOS tự xác nhận. Bill cũ vẫn được kiểm tra riêng."
-                : isWithdrawalView
-                  ? "Kiểm tra người nhận, phí và trạng thái chi tiền."
-                  : "Theo dõi toàn bộ giao dịch thu và chi."}
-            </p>
           </div>
           {scopedFilter ? (
             <span className="finance-scope-label">
@@ -662,10 +596,7 @@ export function FinanceScreen({
             Đặt lại
           </button>
         </div>
-        <p className="chart-footnote">
-          {visible.length} lệnh trong tối đa 100 giao dịch mới nhất. Lọc theo ngày tạo lệnh; số liệu
-          dòng tiền chuẩn ở báo cáo phía trên.
-        </p>
+        <p className="chart-footnote">{visible.length} lệnh · Lọc theo ngày tạo</p>
         <TransactionsTable items={visible} onDetail={(kind, id) => setReview({ kind, id })} />
       </section>
       {!scopedFilter ? <ReportingClassification /> : null}

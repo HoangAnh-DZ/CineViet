@@ -78,7 +78,6 @@ export function VipPurchaseHistory({
       <div className="vip-order-history-heading">
         <div>
           <h2>Lệnh nâng cấp VIP</h2>
-          <p>Xem trạng thái và tiếp tục các lệnh đang chờ.</p>
         </div>
         <button
           type="button"

@@ -6,6 +6,7 @@ import { z } from "zod";
 import { sql } from "drizzle-orm";
 import { savedShortIds } from "@/server/library";
 import { throttleAuth } from "@/server/auth-core";
+import { updateDisplayName } from "@/server/account-security";
 export async function GET() {
   try {
     const user = await currentUser();
@@ -42,14 +43,7 @@ export async function PATCH(request: Request) {
   try {
     checkOrigin(request);
     const user = await requireUser();
-    const data = z
-      .object({ display_name: z.string().trim().min(2).max(80) })
-      .strict()
-      .parse(await readBody(request));
-    await database().execute(
-      sql`UPDATE cinevjet.users SET display_name=${data.display_name},updated_at=now() WHERE id=${user.id}`,
-    );
-    return json({ user: { ...user, username: data.display_name } });
+    return json(await updateDisplayName(user.id, await readBody(request)));
   } catch (e) {
     return failure(e);
   }

@@ -4,7 +4,6 @@ import { usePathname, useSearchParams } from "next/navigation";
 import {
   LayoutDashboard,
   Clapperboard,
-  ArrowLeftRight,
   Users,
   Gift,
   ArrowUpRight,
@@ -22,35 +21,85 @@ import {
 import { useEffect, useState } from "react";
 import { BrandLogo } from "@/components/brand-logo";
 const links = [
-  { href: "/admin", label: "Tổng quan", description: "Số liệu toàn hệ thống", Icon: LayoutDashboard },
-  { href: "/admin/users", label: "Người dùng", description: "Thành viên và tuyến giới thiệu", Icon: Users },
-  { href: "/admin/finance?view=economy", label: "Kinh tế", description: "Doanh thu và lợi nhuận", Icon: ArrowLeftRight },
-  { href: "/admin/finance?view=deposits", label: "Nạp tiền", description: "Lệnh nạp và tiền vào", Icon: Banknote },
-  { href: "/admin/finance?view=withdrawals", label: "Rút tiền", description: "Lệnh rút và tiền ra", Icon: ArrowUpRight },
-  { href: "/admin/referrals", label: "Giới thiệu / hoa hồng", description: "Cấp trên, cấp dưới, thưởng", Icon: Percent },
-  { href: "/admin/videos", label: "Quản lý video", description: "Phim, tập và nguồn phát", Icon: Clapperboard },
-  { href: "/admin/shorts", label: "Phim ngắn", description: "Nguồn và lịch xuất bản", Icon: Clapperboard },
-  { href: "/admin/plans", label: "Quản lý gói VIP", description: "Giá, thời hạn, nhiệm vụ", Icon: Package },
+  {
+    href: "/admin",
+    label: "Tổng quan",
+    description: "Số liệu toàn hệ thống",
+    Icon: LayoutDashboard,
+  },
+  {
+    href: "/admin/users",
+    label: "Người dùng",
+    description: "Thành viên và tuyến giới thiệu",
+    Icon: Users,
+  },
+  {
+    href: "/admin?view=deposits",
+    label: "Nạp tiền",
+    description: "Lệnh nạp và tiền vào",
+    Icon: Banknote,
+  },
+  {
+    href: "/admin?view=withdrawals",
+    label: "Rút tiền",
+    description: "Lệnh rút và tiền ra",
+    Icon: ArrowUpRight,
+  },
+  {
+    href: "/admin/referrals",
+    label: "Giới thiệu / hoa hồng",
+    description: "Cấp trên, cấp dưới, thưởng",
+    Icon: Percent,
+  },
+  {
+    href: "/admin/videos",
+    label: "Quản lý video",
+    description: "Phim, tập và nguồn phát",
+    Icon: Clapperboard,
+  },
+  {
+    href: "/admin/shorts",
+    label: "Phim ngắn",
+    description: "Nguồn và lịch xuất bản",
+    Icon: Clapperboard,
+  },
+  {
+    href: "/admin/plans",
+    label: "Quản lý gói VIP",
+    description: "Giá, thời hạn, nhiệm vụ",
+    Icon: Package,
+  },
   { href: "/admin/rewards", label: "Mã đổi thưởng", description: "Tạo và theo dõi mã", Icon: Gift },
-  { href: "/admin/settings", label: "Cấu hình hệ thống", description: "Nạp, rút và bảo trì", Icon: Settings },
+  {
+    href: "/admin/settings",
+    label: "Cấu hình hệ thống",
+    description: "Nạp, rút và bảo trì",
+    Icon: Settings,
+  },
 ];
 export function AdminShell({ children, name }: { children: React.ReactNode; name: string }) {
   const path = usePathname(),
     searchParams = useSearchParams(),
-    view = searchParams.get("view"),
+    view = ["deposits", "withdrawals"].includes(searchParams.get("view") || "")
+      ? searchParams.get("view")
+      : null,
     [open, setOpen] = useState(false),
     [theme, setTheme] = useState<"dark" | "light">("light");
   useEffect(() => {
     try {
       const saved = window.localStorage.getItem("cinevjet-admin-theme-v2");
       if (saved === "light" || saved === "dark") setTheme(saved);
-    } catch { /* The default theme remains usable when storage is unavailable. */ }
+    } catch {
+      /* The default theme remains usable when storage is unavailable. */
+    }
   }, []);
   useEffect(() => {
     if (!open) return;
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
-    const onKeyDown = (event: KeyboardEvent) => { if (event.key === "Escape") setOpen(false); };
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setOpen(false);
+    };
     document.addEventListener("keydown", onKeyDown);
     return () => {
       document.body.style.overflow = previousOverflow;
@@ -59,12 +108,19 @@ export function AdminShell({ children, name }: { children: React.ReactNode; name
   }, [open]);
   const activeLink = links.find(({ href }) => {
     const [basePath, query] = href.split("?");
-    return (path === basePath && (basePath !== "/admin/finance" || new URLSearchParams(query).get("view") === (view || "economy")));
+    return (
+      path === basePath &&
+      (basePath !== "/admin" || (new URLSearchParams(query).get("view") || "") === (view || ""))
+    );
   });
   function toggleTheme() {
     const next = theme === "dark" ? "light" : "dark";
     setTheme(next);
-    try { window.localStorage.setItem("cinevjet-admin-theme-v2", next); } catch { /* Keep the current session theme. */ }
+    try {
+      window.localStorage.setItem("cinevjet-admin-theme-v2", next);
+    } catch {
+      /* Keep the current session theme. */
+    }
   }
   return (
     <div className={`admin-layout admin-theme-${theme}`}>
@@ -75,32 +131,30 @@ export function AdminShell({ children, name }: { children: React.ReactNode; name
         <nav aria-label="Điều hướng Admin">
           <p className="admin-nav-caption">ĐIỀU HƯỚNG QUẢN TRỊ</p>
           <div className="admin-nav-list">
-              {links.map(({ href, label, Icon }) => {
-                const basePath = href.split("?")[0];
-                const queryView = new URLSearchParams(href.split("?")[1] || "").get("view");
-                const active = path === basePath && (basePath !== "/admin/finance" || queryView === (view || "economy"));
-                return (
-                  <Link
-                    key={href}
-                    href={href}
-                    aria-current={
-                      active
-                        ? "page"
-                        : undefined
-                    }
-                    onClick={() => setOpen(false)}
-                  >
-                    <Icon size={20} />
-                    <span>{label}</span>
-                  </Link>
-                );
-              })}
+            {links.map(({ href, label, Icon }) => {
+              const basePath = href.split("?")[0];
+              const queryView = new URLSearchParams(href.split("?")[1] || "").get("view");
+              const active =
+                path === basePath && (basePath !== "/admin" || (queryView || "") === (view || ""));
+              return (
+                <Link
+                  key={href}
+                  href={href}
+                  aria-current={active ? "page" : undefined}
+                  onClick={() => setOpen(false)}
+                >
+                  <Icon size={20} />
+                  <span>{label}</span>
+                </Link>
+              );
+            })}
           </div>
         </nav>
         <div className="admin-sidebar-footer">
           <ShieldCheck size={18} />
           <span>
-            {name}<small>Quản trị viên</small>
+            {name}
+            <small>Quản trị viên</small>
           </span>
         </div>
         <Link href="/explore" className="admin-back-link">
@@ -126,9 +180,18 @@ export function AdminShell({ children, name }: { children: React.ReactNode; name
           >
             {open ? <X size={21} /> : <Menu size={21} />}
           </button>
-          <span className="admin-breadcrumb"><span>Quản trị</span><ChevronRight size={15} /><strong>{activeLink?.label || "CineVjet"}</strong></span>
+          <span className="admin-breadcrumb">
+            <span>Quản trị</span>
+            <ChevronRight size={15} />
+            <strong>{activeLink?.label || "CineVjet"}</strong>
+          </span>
           <div className="admin-topbar-actions">
-            <button className="admin-theme-toggle" type="button" onClick={toggleTheme} aria-label={theme === "dark" ? "Bật giao diện sáng" : "Bật giao diện tối"}>
+            <button
+              className="admin-theme-toggle"
+              type="button"
+              onClick={toggleTheme}
+              aria-label={theme === "dark" ? "Bật giao diện sáng" : "Bật giao diện tối"}
+            >
               {theme === "dark" ? <Sun size={17} /> : <Moon size={17} />}
               <span>{theme === "dark" ? "Sáng" : "Tối"}</span>
             </button>

@@ -239,7 +239,7 @@ export function RedemptionScreen({
               Thực nhận {formatMoney(success.amount - success.fee)} · {success.bank_name}{" "}
               {success.bank_account_number}
             </p>
-            <p>Yêu cầu sẽ được kiểm tra và xử lý.</p>
+
             <div className="redemption-success-actions">
               <Link href="/rewards" className="button secondary">
                 Về Phần thưởng

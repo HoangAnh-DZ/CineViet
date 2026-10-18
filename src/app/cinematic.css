@@ -1458,3 +1458,16 @@ body .cinematic-discover .hero.cinematic-hero {
   .player-options { gap: 6px; min-width: 0; }
   .player-options select { max-width: 84px; min-width: 0; }
 }
+
+/* Compact credits and account forms share the existing app typography. */
+.movie-credit { margin: 20px 0; padding: 12px 16px; border-radius: 12px; font-size: 12px; line-height: 1.6; min-height: 0; }
+.movie-credit summary { cursor: pointer; font-weight: 750; }
+.movie-credit p { margin: 8px 0 0; overflow-wrap: anywhere; }
+.account-settings { display: grid; gap: 24px; }
+.account-section { display: grid; gap: 14px; padding: 0 0 22px; border-bottom: 1px solid var(--border, #29333f); }
+.account-section h3 { margin: 0; }
+.account-section label { display: grid; gap: 8px; font-size: 14px; font-weight: 650; }
+.account-section .field { width: 100%; min-width: 0; }
+.account-success { color: #6fddb5; }
+.detail-summary .metadata { flex-wrap: wrap; gap: 8px; }
+.detail-synopsis .description { max-width: 80ch; line-height: 1.8; }

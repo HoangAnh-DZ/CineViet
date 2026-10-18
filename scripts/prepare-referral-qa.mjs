@@ -43,8 +43,13 @@ await owner.query(
   "INSERT INTO cinevjet.referral_policy_versions(id,level1_bps,level2_bps,level3_bps,reason) VALUES('legacy-10-percent',1000,0,0,'Immutable pre-migration orders only; preserves historical first-purchase policy') ON CONFLICT(id) DO NOTHING",
 );
 // Refresh the not-yet-released trigger definition only on this isolated QA database.
-const migration = await readFile("database/migrations/0020_referral_reporting.sql", "utf8");
-const triggerStart = migration.indexOf("CREATE FUNCTION cinevjet.capture_referral_snapshot()");
+const migration = await readFile(
+  "database/migrations/0021_unrestricted_referral_rates.sql",
+  "utf8",
+);
+const triggerStart = migration.indexOf(
+  "CREATE OR REPLACE FUNCTION cinevjet.capture_referral_snapshot()",
+);
 const triggerEnd = migration.indexOf("END $$;", triggerStart) + "END $$;".length;
 await owner.query(
   migration
@@ -62,6 +67,12 @@ else
   await owner.query(policy.slice(policy.indexOf("GRANT USAGE ON SCHEMA")).replace("COMMIT;", ""));
 await owner.query(
   (await readFile("database/security/referral-reporting-grants-proposed.sql", "utf8")).replaceAll(
+    "cinevjet_runtime",
+    role,
+  ),
+);
+await owner.query(
+  (await readFile("database/security/account-security-grants-proposed.sql", "utf8")).replaceAll(
     "cinevjet_runtime",
     role,
   ),

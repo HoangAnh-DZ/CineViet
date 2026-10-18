@@ -232,8 +232,17 @@ export function WatchScreen({
             <img src={movie.poster} alt={movie.title} />
             <div>
               <h3>{movie.title}</h3>
+              {movie.original_title && movie.original_title !== movie.title ? (
+                <p>{movie.original_title}</p>
+              ) : null}
               <p>
-                {movie.release_year} • {movie.duration} phút • {movie.country}
+                {[
+                  movie.release_year || null,
+                  movie.duration ? `${movie.duration} phút` : null,
+                  movie.country,
+                ]
+                  .filter(Boolean)
+                  .join(" · ")}
               </p>
               <div className="genre-tags">
                 {movie.genres.map((g) => (
@@ -242,7 +251,7 @@ export function WatchScreen({
               </div>
             </div>
           </div>
-          <p className="description section-block">{movie.description}</p>
+          <p className="description section-block">{movie.description || "Chưa có mô tả."}</p>
         </section>
         <MovieCredit
           movie={selectedSource?.credit ? { ...movie, ...selectedSource.credit } : movie}

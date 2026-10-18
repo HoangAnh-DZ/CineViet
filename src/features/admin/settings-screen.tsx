@@ -7,7 +7,6 @@ import { requestJson } from "@/services/client";
 import type { MoneyConfig } from "@/server/money-config";
 import { formatMoney } from "@/lib/format";
 
-type TextSetting = "bank_name" | "account_number" | "account_name";
 type AmountSetting = "min_deposit" | "min_withdrawal" | "max_amount" | "withdrawal_fee";
 type StatusSetting = "deposit_enabled" | "withdrawal_enabled";
 
@@ -19,10 +18,7 @@ export function SettingsScreen({ initial }: { initial: MoneyConfig }) {
   const [error, setError] = useState("");
   const hasChanges = JSON.stringify(settings) !== JSON.stringify(savedSettings);
 
-  function update(
-    key: TextSetting | AmountSetting | StatusSetting,
-    value: string | number | boolean,
-  ) {
+  function update(key: AmountSetting | StatusSetting, value: string | number | boolean) {
     setSettings((current) => ({ ...current, [key]: value }));
     setMessage("");
     setError("");
@@ -40,7 +36,22 @@ export function SettingsScreen({ initial }: { initial: MoneyConfig }) {
     setMessage("");
     setError("");
     try {
-      const { bill_max_bytes: _billMax, ...editable } = settings;
+      const {
+        deposit_enabled,
+        withdrawal_enabled,
+        min_deposit,
+        min_withdrawal,
+        max_amount,
+        withdrawal_fee_bps,
+      } = settings;
+      const editable = {
+        deposit_enabled,
+        withdrawal_enabled,
+        min_deposit,
+        min_withdrawal,
+        max_amount,
+        withdrawal_fee_bps,
+      };
       const updated = await requestJson<MoneyConfig>("/api/admin/settings", {
         method: "PATCH",
         body: JSON.stringify(editable),
@@ -69,77 +80,6 @@ export function SettingsScreen({ initial }: { initial: MoneyConfig }) {
         >
           <section
             className="dashboard-panel admin-settings-panel"
-            aria-labelledby="deposit-settings-title"
-          >
-            <div className="dashboard-panel-heading">
-              <div className="admin-form-section-heading">
-                <span className="admin-form-section-icon">
-                  <Landmark size={21} aria-hidden="true" />
-                </span>
-                <div>
-                  <h2 id="deposit-settings-title">Thông tin nạp tiền</h2>
-                  <p>Tài khoản ngân hàng nhận tiền từ thành viên.</p>
-                </div>
-              </div>
-            </div>
-            <div className="admin-settings-fields admin-form-grid">
-              <label className="admin-form-field" htmlFor="settings-bank-name">
-                <span>Ngân hàng</span>
-                <input
-                  id="settings-bank-name"
-                  className="field"
-                  required
-                  minLength={2}
-                  maxLength={100}
-                  value={settings.bank_name}
-                  onChange={(event) => update("bank_name", event.target.value)}
-                />
-              </label>
-              <label className="admin-form-field" htmlFor="settings-bank-account">
-                <span>Số tài khoản</span>
-                <input
-                  id="settings-bank-account"
-                  className="field"
-                  required
-                  minLength={4}
-                  maxLength={40}
-                  inputMode="numeric"
-                  autoComplete="off"
-                  value={settings.account_number}
-                  onChange={(event) => update("account_number", event.target.value)}
-                />
-              </label>
-              <label className="admin-form-field" htmlFor="settings-account-name">
-                <span>Chủ tài khoản</span>
-                <input
-                  id="settings-account-name"
-                  className="field"
-                  required
-                  minLength={2}
-                  maxLength={120}
-                  value={settings.account_name}
-                  onChange={(event) => update("account_name", event.target.value)}
-                />
-              </label>
-              <label className="admin-form-field" htmlFor="settings-min-deposit">
-                <span>Nạp tối thiểu (đ)</span>
-                <input
-                  id="settings-min-deposit"
-                  className="field"
-                  type="number"
-                  required
-                  min={1}
-                  max={1000000000}
-                  step={1}
-                  value={settings.min_deposit}
-                  onChange={(event) => update("min_deposit", Number(event.target.value))}
-                />
-              </label>
-            </div>
-          </section>
-
-          <section
-            className="dashboard-panel admin-settings-panel"
             aria-labelledby="withdrawal-settings-title"
           >
             <div className="dashboard-panel-heading">
@@ -154,6 +94,18 @@ export function SettingsScreen({ initial }: { initial: MoneyConfig }) {
               </div>
             </div>
             <div className="admin-settings-fields admin-form-grid">
+              <label className="admin-form-field">
+                <span>Nạp tối thiểu (đ)</span>
+                <input
+                  className="field"
+                  type="number"
+                  required
+                  min={1}
+                  max={1000000000}
+                  value={settings.min_deposit}
+                  onChange={(e) => update("min_deposit", Number(e.target.value))}
+                />
+              </label>
               <label className="admin-form-field" htmlFor="settings-min-withdrawal">
                 <span>Rút tối thiểu (đ)</span>
                 <input
