@@ -70,6 +70,9 @@ test("Dashboard and library use real data with access isolation", async (t) => {
       await pg.exec(
         "INSERT INTO cinevjet.deposits(id,user_id,amount,provider,status,idempotency_key) VALUES('d1','regular-dash',250000,'TEST','COMPLETED','d1'),('d2','regular-dash',500000,'TEST','PENDING','d2'),('d3','regular-dash',100000,'TEST','FAILED','d3'); INSERT INTO cinevjet.withdrawals(id,user_id,amount,fee,destination,status,idempotency_key) VALUES('w1','regular-dash',100000,3000,'TEST','COMPLETED','w1'),('w2','regular-dash',50000,3000,'TEST','PENDING','w2');",
       );
+      await pg.exec(
+        "UPDATE cinevjet.deposits SET completed_at=now() WHERE status='COMPLETED'; UPDATE cinevjet.withdrawals SET completed_at=now() WHERE status='COMPLETED';",
+      );
       const d = await dashboardOverview("admin-dash");
       assert.deepEqual(
         [d.metrics.income, d.metrics.outgoing, d.metrics.profit],
@@ -140,9 +143,13 @@ test("Dashboard and library use real data with access isolation", async (t) => {
     assert.equal((await librarySnapshot("other-dash")).movies.length, 0);
     assert.equal((await adminMovies("admin-dash", "Edited")).items[0].viewers, 2);
   });
-  await pg.exec("INSERT INTO cinevjet.short_videos(id,title,video_url,source_type) VALUES('owned-library-fixture','Owned QA short','https://example.invalid/owned.mp4','EXTERNAL')");
+  await pg.exec(
+    "INSERT INTO cinevjet.short_videos(id,title,video_url,source_type) VALUES('owned-library-fixture','Owned QA short','https://example.invalid/owned.mp4','EXTERNAL')",
+  );
   const sid = (
-    await pg.query<{ id: string }>("SELECT id FROM cinevjet.short_videos WHERE source_type='EXTERNAL' ORDER BY id LIMIT 1")
+    await pg.query<{ id: string }>(
+      "SELECT id FROM cinevjet.short_videos WHERE source_type='EXTERNAL' ORDER BY id LIMIT 1",
+    )
   ).rows[0].id;
   await t.test("Short bookmark is idempotent and persists into the library", async () => {
     await bookmarkShort("regular-dash", sid, true);

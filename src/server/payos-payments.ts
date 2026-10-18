@@ -157,6 +157,7 @@ export async function createPayosOrder(
     )
       throw new ApiError(400, "Số tiền ngoài hạn mức.");
     if (plan) {
+      await tx.execute(sql`SELECT set_config('cinevjet.referral_v2','on',true)`);
       await tx.execute(
         sql`INSERT INTO cinevjet.vip_purchase_requests(id,user_id,plan_id,plan_name,amount,duration_days,reward_tier,reward_schedule,benefits_json,bank_name,bank_account_number,bank_account_name,idempotency_key,user_note,provider) VALUES(${id},${userId},${plan.id},${plan.name},${amount},${plan.duration_days},${plan.reward_tier},ARRAY(SELECT jsonb_array_elements_text(${JSON.stringify(plan.checkin_rewards)}::jsonb)::integer),${JSON.stringify(plan.benefits_json)}::jsonb,'payOS','','',${d.idempotency_key},'','PAYOS')`,
       );

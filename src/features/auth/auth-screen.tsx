@@ -16,6 +16,7 @@ function FieldError({ name, errors }: { name: string; errors: Record<string, str
   ) : null;
 }
 export function AuthScreen({ register = false }: { register?: boolean }) {
+  const [interactive, setInteractive] = useState(false);
   const [visible, setVisible] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -40,6 +41,7 @@ export function AuthScreen({ register = false }: { register?: boolean }) {
   const [referralCode, setReferralCode] = useState("");
   const { setUser, toast } = useApp();
   const router = useRouter();
+  useEffect(() => setInteractive(true), []);
   function clearField(name: string) {
     setFieldErrors((previous) => {
       const next = { ...previous };
@@ -91,10 +93,9 @@ export function AuthScreen({ register = false }: { register?: boolean }) {
   async function submit(event: React.FormEvent) {
     event.preventDefault();
     if (submitting.current || (register && (!registrationReady || !remember))) return;
+    const credentials = { email, password, remember };
     const fields = {
-      email,
-      password,
-      remember,
+      ...credentials,
       display_name: name,
       verification_challenge: challengeId,
       verification_code: challengeInput.toUpperCase(),
@@ -102,10 +103,14 @@ export function AuthScreen({ register = false }: { register?: boolean }) {
     };
     const validation = register
       ? registrationFormSchema.safeParse({ ...fields, confirm_password: confirmation })
-      : credentialsSchema.safeParse(fields);
+      : credentialsSchema.safeParse(credentials);
     if (!validation.success) {
       const errors: Record<string, string> = {};
       for (const issue of validation.error.issues) {
+        if (!issue.path.length) {
+          setError("Thông tin chưa hợp lệ. Vui lòng kiểm tra và thử lại.");
+          continue;
+        }
         const key = String(issue.path[0]);
         if (!errors[key]) errors[key] = issue.message;
       }
@@ -181,7 +186,7 @@ export function AuthScreen({ register = false }: { register?: boolean }) {
             : "Đăng nhập để tiếp tục xem phim yêu thích của bạn."}
         </p>
         {register ? <p className="helper">Đăng ký miễn phí.</p> : null}
-        <form onSubmit={submit} ref={form} noValidate>
+        <form method="post" onSubmit={submit} ref={form} noValidate>
           <fieldset disabled={pending} className="auth-fields">
             {register ? (
               <div className="auth-field">
@@ -427,7 +432,7 @@ export function AuthScreen({ register = false }: { register?: boolean }) {
             <button
               className="button primary wide"
               type="submit"
-              disabled={pending || (register && (!remember || !registrationReady))}
+              disabled={!interactive || pending || (register && (!remember || !registrationReady))}
             >
               {pending ? "Đang xử lý..." : register ? "Đăng ký" : "Đăng nhập"}
             </button>

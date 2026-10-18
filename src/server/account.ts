@@ -1,3 +1,4 @@
+import { currentReferralPolicy } from "./referral-policy";
 import "server-only";
 import { coinBalances } from "@/domain/coins";
 import { randomBytes, randomUUID } from "node:crypto";
@@ -168,14 +169,14 @@ export async function referralSummary(userId: string) {
     }
     const stats = (
       await tx.execute(
-        sql`SELECT (SELECT count(*)::int FROM cinevjet.users WHERE referred_by=${userId} AND id<>${userId}) referred,COALESCE(sum(amount),0) AS earned FROM cinevjet.referral_commissions WHERE referrer_id=${userId}`,
+        sql`SELECT (SELECT count(*)::int FROM cinevjet.users WHERE referred_by=${userId} AND id<>${userId}) referred,COALESCE(sum(amount),0) AS earned FROM (SELECT amount FROM cinevjet.referral_commissions WHERE referrer_id=${userId} UNION ALL SELECT amount FROM cinevjet.referral_commission_entries WHERE beneficiary_id=${userId}) c`,
       )
     ).rows[0];
     return {
       code,
       referred: Number(stats?.referred || 0),
       earned: Number(stats?.earned || 0),
-      percent: 10,
+      percent: (await currentReferralPolicy(tx)).rates_bps[0] / 100,
     };
   });
 }

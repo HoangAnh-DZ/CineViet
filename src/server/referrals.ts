@@ -1,9 +1,10 @@
+import { commissionSourceCTE } from "./referral-reporting";
+import { currentReferralPolicy } from "./referral-policy";
 import "server-only";
 import { sql } from "drizzle-orm";
 import { z } from "zod";
 import { database } from "./db";
 import { referralSummary } from "./account";
-import { ApiError } from "./http";
 
 export const referralFilters = z
   .object({
@@ -18,7 +19,7 @@ export async function referralDashboard(userId: string, filters: unknown = {}) {
   const row = await database().transaction(
     async (tx) =>
       (
-        await tx.execute(sql`WITH RECURSIVE network AS (
+        await tx.execute(sql`WITH RECURSIVE ${commissionSourceCTE}, network AS (
       SELECT u.id,1 AS level,ARRAY[${userId},u.id]::text[] AS path FROM cinevjet.users u WHERE u.referred_by=${userId} AND u.id<>${userId}
       UNION ALL
       SELECT u.id,n.level+1,n.path||u.id FROM cinevjet.users u JOIN network n ON u.referred_by=n.id WHERE n.level<3 AND NOT u.id=ANY(n.path)
@@ -27,14 +28,13 @@ export async function referralDashboard(userId: string, filters: unknown = {}) {
     ) SELECT
       (SELECT jsonb_build_object('total',count(*),'funded',count(*) FILTER(WHERE funded),'level1',count(*) FILTER(WHERE level=1),'level2',count(*) FILTER(WHERE level=2),'level3',count(*) FILTER(WHERE level=3)) FROM members) AS stats,
       (SELECT count(*)::int FROM members WHERE (${level}=0 OR level=${level})) AS filtered_count,
-      COALESCE((SELECT jsonb_agg(item ORDER BY item.created_at DESC,item.id) FROM (SELECT id,display_name,created_at,status,level,funded FROM members WHERE (${level}=0 OR level=${level}) ORDER BY created_at DESC,id LIMIT ${pageSize} OFFSET ${(page - 1) * pageSize}) item),'[]'::jsonb) AS members,
-      (SELECT row_to_json(p) FROM cinevjet.referral_policy_drafts p WHERE id='default') AS policy`)
+      (SELECT jsonb_build_object('total',COALESCE(sum(amount),0),'f1',COALESCE(sum(amount) FILTER(WHERE level=1),0),'f2',COALESCE(sum(amount) FILTER(WHERE level=2),0),'f3',COALESCE(sum(amount) FILTER(WHERE level=3),0)) FROM ledger_credits WHERE beneficiary_id=${userId}) AS credited,
+      COALESCE((SELECT jsonb_agg(item ORDER BY item.created_at DESC,item.id) FROM (SELECT id,display_name,created_at,status,level,funded FROM members WHERE (${level}=0 OR level=${level}) ORDER BY created_at DESC,id LIMIT ${pageSize} OFFSET ${(page - 1) * pageSize}) item),'[]'::jsonb) AS members`)
       ).rows[0],
     { isolationLevel: "repeatable read", accessMode: "read only" },
   );
-  if (!row.policy) throw new ApiError(503, "Chưa tải được cấu hình giới thiệu.");
-  const stats = row.stats as Record<string, number>,
-    policy = row.policy as Record<string, unknown>;
+  const stats = row.stats as Record<string, number>;
+  const policy = await currentReferralPolicy();
   return {
     code: identity.code,
     stats: {
@@ -44,13 +44,15 @@ export async function referralDashboard(userId: string, filters: unknown = {}) {
       level2: Number(stats.level2),
       level3: Number(stats.level3),
     },
+    credited: Object.fromEntries(
+      Object.entries(row.credited as Record<string, unknown>).map(([key, value]) => [
+        key,
+        Number(value),
+      ]),
+    ),
     policy: {
-      status: "DRAFT" as const,
-      percentages: [
-        Number(policy.level1_percent),
-        Number(policy.level2_percent),
-        Number(policy.level3_percent),
-      ],
+      status: "ACTIVE" as const,
+      percentages: policy.rates_bps.map((value) => value / 100),
     },
     members: (row.members as Record<string, unknown>[]).map((member) => ({
       nickname: String(member.display_name),

@@ -1,3 +1,4 @@
+import { classificationCTE, financialReport, financialReportRevision } from "./financial-reporting";
 import "server-only";
 import { randomUUID } from "node:crypto";
 import { sql } from "drizzle-orm";
@@ -59,6 +60,9 @@ export type MoneyTransaction = {
   fee: number;
   status: string;
   created_at: string;
+  completed_at?: string | null;
+  reporting_excluded?: boolean;
+  reporting_classification?: string;
   kind: "DEPOSIT" | "WITHDRAWAL" | "VIP_PURCHASE";
   source_asset: "VND" | "COIN";
   coins_amount: number | null;
@@ -74,68 +78,58 @@ export type MoneyTransaction = {
   payos_status?: string | null;
   provider_reference?: string | null;
 };
-const bankReceipts = sql`(SELECT amount,completed_at,created_at FROM cinevjet.deposits WHERE status='COMPLETED' UNION ALL SELECT amount,completed_at,created_at FROM cinevjet.vip_purchase_requests WHERE status='COMPLETED')`;
 export async function moneyPeriods(actor: string) {
-  await assertAdmin(actor);
-  const r = await database().execute(
-    sql`WITH periods AS (SELECT 'TODAY' AS period, (now() AT TIME ZONE 'Asia/Ho_Chi_Minh')::date AT TIME ZONE 'Asia/Ho_Chi_Minh' AS since UNION ALL SELECT 'WEEK', ((now() AT TIME ZONE 'Asia/Ho_Chi_Minh')::date-6) AT TIME ZONE 'Asia/Ho_Chi_Minh' UNION ALL SELECT 'MONTH', date_trunc('month',now() AT TIME ZONE 'Asia/Ho_Chi_Minh') AT TIME ZONE 'Asia/Ho_Chi_Minh' UNION ALL SELECT 'ALL', '-infinity'::timestamptz), settled AS (SELECT amount AS income, 0::bigint AS outgoing, COALESCE(completed_at,created_at) AS settled_at FROM ${bankReceipts} r UNION ALL SELECT 0::bigint, amount-fee, COALESCE(completed_at,created_at) FROM cinevjet.withdrawals WHERE status='COMPLETED') SELECT p.period, COALESCE(sum(s.income),0) AS income, COALESCE(sum(s.outgoing),0) AS outgoing FROM periods p LEFT JOIN settled s ON s.settled_at>=p.since GROUP BY p.period`,
-  );
-  return r.rows.map((r) => ({
-    period: String(r.period),
-    income: Number(r.income),
-    outgoing: Number(r.outgoing),
-    profit: Number(r.income) - Number(r.outgoing),
-  }));
+  return (await financialReport(actor)).periods;
 }
-export async function dashboardOverview(actor: string) {
+export async function dashboardOverview(
+  actor: string,
+  mode: "ALL" | "BUSINESS" = "ALL",
+  includeAllTransactions = false,
+) {
   await assertAdmin(actor);
-  const [metrics, chart, monthly, transactions, users, periods] = await Promise.all([
-    database().execute(
-      sql`SELECT (SELECT COALESCE(sum(amount),0) FROM ${bankReceipts} r) AS income,(SELECT COALESCE(sum(amount-fee),0) FROM cinevjet.withdrawals WHERE status='COMPLETED') AS outgoing,(SELECT count(*) FROM cinevjet.users) AS users,(SELECT count(*) FROM cinevjet.movies WHERE status='PUBLISHED') AS movies`,
-    ),
-    database().execute(
-      sql`WITH days AS (SELECT generate_series((now() AT TIME ZONE 'Asia/Ho_Chi_Minh')::date-29,(now() AT TIME ZONE 'Asia/Ho_Chi_Minh')::date,interval '1 day')::date AS bucket_date),ins AS (SELECT (COALESCE(completed_at,created_at) AT TIME ZONE 'Asia/Ho_Chi_Minh')::date AS bucket_date,sum(amount) amount FROM ${bankReceipts} r WHERE COALESCE(completed_at,created_at)>=now()-interval '31 days' GROUP BY 1),outs AS (SELECT (COALESCE(completed_at,created_at) AT TIME ZONE 'Asia/Ho_Chi_Minh')::date AS bucket_date,sum(amount-fee) amount FROM cinevjet.withdrawals WHERE status='COMPLETED' AND COALESCE(completed_at,created_at)>=now()-interval '31 days' GROUP BY 1) SELECT to_char(d.bucket_date,'YYYY-MM-DD') AS day,COALESCE(i.amount,0) income,COALESCE(o.amount,0) outgoing FROM days d LEFT JOIN ins i ON i.bucket_date=d.bucket_date LEFT JOIN outs o ON o.bucket_date=d.bucket_date ORDER BY d.bucket_date`,
-    ),
-    database().execute(
-      sql`WITH months AS (SELECT generate_series(date_trunc('month',now() AT TIME ZONE 'Asia/Ho_Chi_Minh')-interval '11 months',date_trunc('month',now() AT TIME ZONE 'Asia/Ho_Chi_Minh'),interval '1 month')::date AS bucket_date),ins AS (SELECT date_trunc('month',COALESCE(completed_at,created_at) AT TIME ZONE 'Asia/Ho_Chi_Minh')::date AS bucket_date,sum(amount) amount FROM ${bankReceipts} r WHERE COALESCE(completed_at,created_at)>=date_trunc('month',now())-interval '12 months' GROUP BY 1),outs AS (SELECT date_trunc('month',COALESCE(completed_at,created_at) AT TIME ZONE 'Asia/Ho_Chi_Minh')::date AS bucket_date,sum(amount-fee) amount FROM cinevjet.withdrawals WHERE status='COMPLETED' AND COALESCE(completed_at,created_at)>=date_trunc('month',now())-interval '12 months' GROUP BY 1) SELECT to_char(m.bucket_date,'YYYY-MM') AS day,COALESCE(i.amount,0) income,COALESCE(o.amount,0) outgoing FROM months m LEFT JOIN ins i ON i.bucket_date=m.bucket_date LEFT JOIN outs o ON o.bucket_date=m.bucket_date ORDER BY m.bucket_date`,
-    ),
-    moneyTransactions(actor),
-    database().execute<UserSummary>(
-      sql`SELECT id,display_name,email,status,created_at FROM cinevjet.users ORDER BY created_at DESC,id LIMIT 5`,
-    ),
-    moneyPeriods(actor),
-  ]);
-  const m = metrics.rows[0];
-  return {
-    moneyPeriods: periods,
-    metrics: {
-      income: Number(m.income),
-      outgoing: Number(m.outgoing),
-      profit: Number(m.income) - Number(m.outgoing),
-      users: Number(m.users),
-      movies: Number(m.movies),
+  return database().transaction(
+    async (tx) => {
+      const report = await financialReport(actor, { mode }, tx),
+        transactions = await moneyTransactions(actor, mode, tx);
+      const revision = await financialReportRevision(actor, tx);
+      const users = await tx.execute<UserSummary>(
+        sql`SELECT id,display_name,email,status,created_at FROM cinevjet.users ORDER BY created_at DESC,id LIMIT 5`,
+      );
+      const movies = await tx.execute(
+        sql`SELECT count(*) AS total FROM cinevjet.movies WHERE status='PUBLISHED'`,
+      );
+      return {
+        moneyPeriods: report.periods,
+        metrics: { ...report.totals, users: report.users, movies: Number(movies.rows[0].total) },
+        chart: report.chart,
+        monthlyChart: report.monthlyChart,
+        reportMode: report.mode,
+        reportQuality: report.quality,
+        reportedAt: report.reported_at,
+        reportRevision: revision,
+        transactions: transactions.slice(0, includeAllTransactions ? 100 : 6),
+        users: users.rows.map((r) => ({ ...r, created_at: stamp(r.created_at) })),
+      };
     },
-    chart: chart.rows.map((r) => ({
-      day: String(r.day),
-      income: Number(r.income),
-      outgoing: Number(r.outgoing),
-      profit: Number(r.income) - Number(r.outgoing),
-    })),
-    monthlyChart: monthly.rows.map((r) => ({
-      day: String(r.day),
-      income: Number(r.income),
-      outgoing: Number(r.outgoing),
-      profit: Number(r.income) - Number(r.outgoing),
-    })),
-    transactions: transactions.slice(0, 6),
-    users: users.rows.map((r) => ({ ...r, created_at: stamp(r.created_at) })),
-  };
-}
-export async function moneyTransactions(actor: string) {
-  await assertAdmin(actor);
-  const r = await database().execute<MoneyTransaction>(
-    sql`SELECT t.*,u.display_name,u.email,p.order_code,p.status AS payos_status,(SELECT e.provider_reference FROM cinevjet.payment_events e WHERE e.order_id=p.id AND e.provider_reference IS NOT NULL ORDER BY e.created_at DESC LIMIT 1) AS provider_reference FROM (SELECT id,user_id,amount,0::bigint fee,status,created_at,bill_url,bank_name,bank_account_number,bank_account_name,'DEPOSIT' AS kind,'VND' AS source_asset,NULL::bigint coins_amount,NULL::bigint coin_value_vnd,NULL::text plan_name FROM cinevjet.deposits UNION ALL SELECT id,user_id,amount,fee,status,created_at,NULL::text,bank_name,bank_account_number,bank_account_name,'WITHDRAWAL',source_asset,coins_amount,coin_value_vnd,NULL::text FROM cinevjet.withdrawals UNION ALL SELECT id,user_id,amount,0::bigint,status,created_at,bill_url,bank_name,bank_account_number,bank_account_name,'VIP_PURCHASE','VND',NULL::bigint,NULL::bigint,plan_name FROM cinevjet.vip_purchase_requests) t JOIN cinevjet.users u ON u.id=t.user_id LEFT JOIN cinevjet.payos_orders p ON p.id=t.id ORDER BY t.created_at DESC,t.id LIMIT 100`,
+    { isolationLevel: "repeatable read", accessMode: "read only" },
   );
+}
+export async function moneyTransactions(
+  actor: string,
+  mode: "ALL" | "BUSINESS" = "ALL",
+  executor: Pick<ReturnType<typeof database>, "execute"> = database(),
+) {
+  await assertAdmin(actor, executor);
+  const r = await executor.execute<MoneyTransaction>(sql`WITH ${classificationCTE}
+ SELECT t.*,u.display_name,u.email,p.order_code,p.status AS payos_status,COALESCE(c.excluded,false) reporting_excluded,
+ CASE WHEN c.id IS NULL THEN 'UNKNOWN' WHEN c.excluded THEN 'TEST' ELSE 'REAL' END reporting_classification,
+ (SELECT e.provider_reference FROM cinevjet.payment_events e WHERE e.order_id=p.id AND e.provider_reference IS NOT NULL ORDER BY e.created_at DESC LIMIT 1) provider_reference
+ FROM (SELECT id,user_id,amount,0::bigint fee,status,created_at,completed_at,bill_url,bank_name,bank_account_number,bank_account_name,'DEPOSIT' AS kind,'VND' AS source_asset,NULL::bigint coins_amount,NULL::bigint coin_value_vnd,NULL::text plan_name FROM cinevjet.deposits
+ UNION ALL SELECT id,user_id,amount,fee,status,created_at,completed_at,NULL::text,bank_name,bank_account_number,bank_account_name,'WITHDRAWAL',source_asset,coins_amount,coin_value_vnd,NULL::text FROM cinevjet.withdrawals
+ UNION ALL SELECT id,user_id,amount,0::bigint,status,created_at,completed_at,bill_url,bank_name,bank_account_number,bank_account_name,'VIP_PURCHASE','VND',NULL::bigint,NULL::bigint,plan_name FROM cinevjet.vip_purchase_requests) t
+ JOIN cinevjet.users u ON u.id=t.user_id LEFT JOIN cinevjet.payos_orders p ON p.deposit_id=t.id AND t.kind='DEPOSIT' OR p.vip_purchase_id=t.id AND t.kind='VIP_PURCHASE'
+ LEFT JOIN classifications c ON c.target_kind=t.kind AND c.target_id=t.id
+ WHERE (${mode}='ALL' OR NOT COALESCE(c.excluded,false)) ORDER BY t.created_at DESC,t.id LIMIT 100`);
   return r.rows.map((r) => ({
     ...r,
     ...(r.kind === "WITHDRAWAL"
@@ -151,6 +145,7 @@ export async function moneyTransactions(actor: string) {
     coins_amount: r.coins_amount === null ? null : Number(r.coins_amount),
     coin_value_vnd: r.coin_value_vnd === null ? null : Number(r.coin_value_vnd),
     created_at: stamp(r.created_at),
+    completed_at: r.completed_at ? stamp(r.completed_at) : null,
   }));
 }
 export type WithdrawalFilters = {
@@ -175,7 +170,7 @@ export async function withdrawalTransactions(actor: string, filters: WithdrawalF
     to = day(filters.to);
   const requestedPage = Math.max(1, Math.min(100000, Math.floor(Number(filters.page)) || 1));
   // Filter withdrawals before pagination: unrelated deposits cannot hide open coin requests.
-  const where = sql`(${status}='' OR w.status=${status}) AND (${q}='' OR u.display_name ILIKE ${"%" + q + "%"} OR u.email ILIKE ${"%" + q + "%"} OR w.id=${q}) AND (${from}='' OR w.created_at>=NULLIF(${from},'')::date AT TIME ZONE 'Asia/Ho_Chi_Minh') AND (${to}='' OR w.created_at<(NULLIF(${to},'')::date+1) AT TIME ZONE 'Asia/Ho_Chi_Minh')`;
+  const where = sql`(${status}='' OR w.status=${status}) AND (${q}='' OR u.display_name ILIKE ${"%" + q + "%"} OR u.email ILIKE ${"%" + q + "%"} OR w.id=${q}) AND (${from}='' OR w.created_at>=NULLIF(${from},'')::date::timestamp AT TIME ZONE 'Asia/Ho_Chi_Minh') AND (${to}='' OR w.created_at<(NULLIF(${to},'')::date+1)::timestamp AT TIME ZONE 'Asia/Ho_Chi_Minh')`;
   return database().transaction(
     async (tx) => {
       const summary = (

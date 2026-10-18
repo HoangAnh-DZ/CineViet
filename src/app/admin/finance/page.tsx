@@ -1,7 +1,6 @@
 import { protectAdminPage } from "@/server/admin";
 import {
   dashboardOverview,
-  moneyTransactions,
   withdrawalTransactions,
   type WithdrawalFilters,
 } from "@/server/dashboard";
@@ -13,7 +12,9 @@ export const metadata = { title: "Admin · Dòng tiền" };
 export default async function Page({
   searchParams,
 }: {
-  searchParams: Promise<{ kind?: string; id?: string; view?: string } & WithdrawalFilters>;
+  searchParams: Promise<
+    { kind?: string; id?: string; view?: string; mode?: string } & WithdrawalFilters
+  >;
 }) {
   const u = await protectAdminPage();
   const query = await searchParams;
@@ -30,10 +31,9 @@ export default async function Page({
         initialReview={initialReview}
       />
     );
-  const [data, transactions] = await Promise.all([
-    dashboardOverview(u.id),
-    moneyTransactions(u.id),
-  ]);
+  const mode = query.view === "deposits" ? "ALL" : query.mode === "ALL" ? "ALL" : "BUSINESS";
+  const data = await dashboardOverview(u.id, mode, true);
+  const transactions = data.transactions;
   const initialFilter =
     query.view === "deposits" ? "INCOMING" : query.view === "withdrawals" ? "WITHDRAWAL" : "ALL";
   return (

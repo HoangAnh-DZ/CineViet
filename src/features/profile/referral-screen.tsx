@@ -1,5 +1,6 @@
 "use client";
-import { useRef, useState } from "react";
+import { formatMoney } from "@/lib/format";
+import { useRef, useState, useEffect } from "react";
 import { Copy, Share2, Users } from "lucide-react";
 import { PageHeader } from "@/components/ui";
 import { requestJson } from "@/services/client";
@@ -15,6 +16,7 @@ export function ReferralScreen({
     [busy, setBusy] = useState(false),
     [error, setError] = useState(""),
     [feedback, setFeedback] = useState("");
+  useEffect(() => setData(initial), [initial]);
   const flight = useRef(false);
   const link = `${origin}/register?ref=${encodeURIComponent(data.code)}`;
   async function load(level: number, page = 1) {
@@ -82,9 +84,9 @@ export function ReferralScreen({
           {[
             ["Tổng thành viên", data.stats.total],
             ["Đã nạp ví", data.stats.funded],
-            ["Cấp 1", data.stats.level1],
-            ["Cấp 2", data.stats.level2],
-            ["Cấp 3", data.stats.level3],
+            ["F1 · Trực tiếp", data.stats.level1],
+            ["F2 · Do F1 mời", data.stats.level2],
+            ["F3 · Do F2 mời", data.stats.level3],
           ].map(([label, value]) => (
             <div className="product-panel" key={label}>
               <span>{label}</span>
@@ -94,22 +96,24 @@ export function ReferralScreen({
         </section>
         <section className="product-panel referral-policy">
           <div className="section-heading">
-            <h2>Chính sách dự kiến</h2>
-            <span className="policy-draft">Chưa áp dụng</span>
+            <h2>Tỷ lệ hiện hành</h2>
+            <span className="policy-draft">Mua VIP hợp lệ</span>
           </div>
           <div className="referral-rates">
             {data.policy.percentages.map((value, i) => (
               <div key={i}>
-                <span>Cấp {i + 1}</span>
+                <span>F{i + 1}</span>
                 <strong>{value}%</strong>
+                <small>{formatMoney(data.credited[`f${i + 1}`] || 0)} đã ghi có</small>
               </div>
             ))}
           </div>
           <p className="helper">
-            Các tỷ lệ đang chờ phê duyệt chính sách. Không tự động phát sinh hoa hồng từ nạp tiền,
-            mua VIP hoặc mời thành viên.
+            Hoa hồng ghi có vào ví VND khi VIP thanh toán hợp lệ. Tỷ lệ chốt khi tạo đơn; đơn đang
+            chờ giữ tỷ lệ cũ.
           </p>
         </section>
+        <p className="helper">Tổng hoa hồng đã ghi có: {formatMoney(data.credited.total || 0)}</p>
         <section className="product-panel referral-members">
           <h2>Thành viên</h2>
           <div className="referral-tabs" role="group" aria-label="Lọc cấp thành viên">
@@ -120,7 +124,7 @@ export function ReferralScreen({
                 aria-pressed={data.pagination.level === level}
                 onClick={() => void load(level)}
               >
-                {level === 0 ? "Tất cả" : `Cấp ${level}`}
+                {level === 0 ? "Tất cả" : `F${level}`}
               </button>
             ))}
           </div>
@@ -143,7 +147,7 @@ export function ReferralScreen({
                     <div>
                       <strong>{member.nickname}</strong>
                       <span>
-                        #{member.member_code} · Cấp {member.level}
+                        #{member.member_code} · F{member.level}
                       </span>
                     </div>
                     <div>
@@ -158,7 +162,7 @@ export function ReferralScreen({
               </ul>
             ) : (
               <p className="referral-empty">
-                Chưa có thành viên{data.pagination.level ? ` cấp ${data.pagination.level}` : ""}.
+                Chưa có thành viên{data.pagination.level ? ` F${data.pagination.level}` : ""}.
               </p>
             )}
           </div>

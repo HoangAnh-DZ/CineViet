@@ -1,4 +1,5 @@
 "use client";
+import { CashReportNotes, ReportingClassification } from "./reporting-controls";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import {
@@ -13,7 +14,7 @@ import {
   CheckCircle2,
   Clock3,
 } from "lucide-react";
-import type { DashboardData } from "@/server/dashboard";
+import type { DashboardData, MoneyTransaction } from "@/server/dashboard";
 import { formatMoney } from "@/lib/format";
 import { MoneyReview } from "./money-review";
 import type { MoneyKind } from "@/domain/money";
@@ -75,25 +76,25 @@ export function MetricCards({
             value: formatMoney(totals.income),
             Icon: ArrowDownLeft,
             tone: "mint",
-            note: "Nạp tiền và mua VIP đã duyệt",
+            note: "Nạp ví + thanh toán VIP hoàn tất",
           },
           {
             label: "Tiền ra",
             value: formatMoney(totals.outgoing),
             Icon: ArrowUpRight,
             tone: "rose",
-            note: "Rút tiền thực nhận",
+            note: "Rút VND + đổi Coins thực nhận",
           },
           {
-            label: "Tổng lãi",
+            label: "Chênh lệch thu − chi",
             value: formatMoney(totals.profit),
             Icon: TrendingUp,
             tone: "gold",
-            note: "Thu − chi, trước chi phí vận hành",
+            note: "Dòng tiền, không phải lợi nhuận ròng",
           },
           {
-            label: "Tổng người dùng",
-            value: data.users.toLocaleString("vi-VN"),
+            label: period === "ALL" ? "Tổng người dùng" : "Người dùng mới",
+            value: (period === "ALL" ? data.users : totals.new_users).toLocaleString("vi-VN"),
             Icon: Users,
             tone: "blue",
             note: "Tài khoản đã đăng ký",
@@ -108,10 +109,30 @@ export function MetricCards({
             </div>
             <strong>{value}</strong>
             <small>
-              {note} · {label === "Tổng người dùng" ? "Toàn thời gian" : names[period]}
+              {note} · {names[period]}
             </small>
           </article>
         ))}
+      </div>
+      <div className="finance-summary">
+        <span>
+          Nạp ví <strong>{formatMoney(totals.deposits)}</strong>
+        </span>
+        <span>
+          VIP <strong>{formatMoney(totals.vip)}</strong>
+        </span>
+        <span>
+          Rút VND thực nhận <strong>{formatMoney(totals.withdrawal_vnd)}</strong>
+        </span>
+        <span>
+          Đổi Coins thực nhận <strong>{formatMoney(totals.redemptions)}</strong>
+        </span>
+        <span>
+          Tổng rút trước phí <strong>{formatMoney(totals.gross)}</strong>
+        </span>
+        <span>
+          Phí <strong>{formatMoney(totals.fees)}</strong>
+        </span>
       </div>
     </>
   );
@@ -256,7 +277,7 @@ export function TransactionsTable({
   items,
   onDetail,
 }: {
-  items: DashboardData["transactions"];
+  items: MoneyTransaction[];
   onDetail?: (kind: MoneyKind, id: string) => void;
 }) {
   const names: Record<string, string> = {
@@ -299,7 +320,8 @@ export function TransactionsTable({
                       ? "Đổi thưởng"
                       : "Rút VND"}
                 {t.plan_name ? <small>{t.plan_name}</small> : null}
-                {t.kind === "WITHDRAWAL" ? <small>Mã: {t.id}</small> : null}
+                {t.reporting_classification ? <small>{t.reporting_classification}</small> : null}
+                <small>Mã: {t.id.slice(0, 8)}</small>
                 {t.order_code ? <small>payOS · {t.order_code}</small> : null}
                 {t.provider_reference ? <small>{t.provider_reference}</small> : null}
               </td>
@@ -389,6 +411,7 @@ export function OverviewScreen({ data }: { data: DashboardData }) {
           </Link>
         }
       />
+      <CashReportNotes data={data} />
       <MetricCards data={data.metrics} periods={data.moneyPeriods} />
       <div className="dashboard-overview-grid">
         <MoneyChart data={data.chart} monthlyData={data.monthlyChart} />
@@ -487,15 +510,12 @@ export function FinanceScreen({
               : t.kind === activeFilter)) &&
       (!status || t.status === status) &&
       (!user || `${t.display_name} ${t.email}`.toLowerCase().includes(user.toLowerCase())) &&
-      (!from || t.created_at.slice(0, 10) >= from) &&
-      (!to || t.created_at.slice(0, 10) <= to),
+      (!from ||
+        new Date(t.created_at).toLocaleDateString("sv-SE", { timeZone: "Asia/Ho_Chi_Minh" }) >=
+          from) &&
+      (!to ||
+        new Date(t.created_at).toLocaleDateString("sv-SE", { timeZone: "Asia/Ho_Chi_Minh" }) <= to),
   );
-  const income = visible
-      .filter((t) => t.kind !== "WITHDRAWAL" && t.status === "COMPLETED")
-      .reduce((n, t) => n + t.amount, 0),
-    outgoing = visible
-      .filter((t) => t.kind === "WITHDRAWAL" && t.status === "COMPLETED")
-      .reduce((n, t) => n + t.amount - t.fee, 0);
   const isDepositView =
       activeFilter === "INCOMING" || activeFilter === "DEPOSIT" || activeFilter === "VIP_PURCHASE",
     isWithdrawalView = activeFilter === "WITHDRAWAL",
@@ -504,7 +524,7 @@ export function FinanceScreen({
       ? "Quản lý lệnh nạp tiền và theo dõi dòng tiền vào."
       : isWithdrawalView
         ? "Quản lý lệnh rút tiền và theo dõi dòng tiền ra."
-        : "Tổng hợp doanh thu, chi phí và lợi nhuận của nền tảng.",
+        : "Dòng tiền thực thu, thực chi và chênh lệch theo kỳ.",
     completed = visible.filter((t) => t.status === "COMPLETED"),
     waiting = visible.filter((t) => ["PENDING", "PROCESSING"].includes(t.status)),
     scopedTotal = completed.reduce(
@@ -516,7 +536,10 @@ export function FinanceScreen({
       <DashboardHeading title={contextTitle} description={contextDescription} />
       {scopedFilter ? <PaymentOperations withdrawals={isWithdrawalView} /> : null}
       {activeFilter === "ALL" ? (
-        <MetricCards data={data.metrics} periods={data.moneyPeriods} />
+        <>
+          <CashReportNotes data={data} />
+          <MetricCards data={data.metrics} periods={data.moneyPeriods} />
+        </>
       ) : (
         <section className="finance-context-grid" aria-label={`Thống kê ${contextTitle}`}>
           <article>
@@ -639,34 +662,13 @@ export function FinanceScreen({
             Đặt lại
           </button>
         </div>
-        <div className="finance-summary">
-          {isDepositView ? (
-            <span>
-              Tiền vào <strong>{formatMoney(income)}</strong>
-            </span>
-          ) : isWithdrawalView ? (
-            <span>
-              Tiền ra thực nhận <strong>{formatMoney(outgoing)}</strong>
-            </span>
-          ) : (
-            <>
-              <span>
-                Tiền vào <strong>{formatMoney(income)}</strong>
-              </span>
-              <span>
-                Tiền ra <strong>{formatMoney(outgoing)}</strong>
-              </span>
-              <span>
-                Thu − chi <strong>{formatMoney(income - outgoing)}</strong>
-              </span>
-            </>
-          )}
-        </div>
         <p className="chart-footnote">
-          {visible.length} lệnh trong tối đa 100 giao dịch mới nhất · Tổng chỉ tính lệnh hoàn tất.
+          {visible.length} lệnh trong tối đa 100 giao dịch mới nhất. Lọc theo ngày tạo lệnh; số liệu
+          dòng tiền chuẩn ở báo cáo phía trên.
         </p>
         <TransactionsTable items={visible} onDetail={(kind, id) => setReview({ kind, id })} />
       </section>
+      {!scopedFilter ? <ReportingClassification /> : null}
       {review ? (
         <MoneyReview key={review.kind + review.id} {...review} onClose={() => setReview(null)} />
       ) : null}

@@ -1,3 +1,5 @@
+import { settleReferralCommission } from "./referral-policy";
+import { commissionAmount } from "@/domain/referral-policy";
 import "server-only";
 import { randomUUID, randomBytes } from "node:crypto";
 import { sql } from "drizzle-orm";
@@ -134,6 +136,7 @@ export async function createVipPurchase(userId: string, input: unknown) {
         )
       ).rows[0];
       if (Number(pending.n) >= 5) throw new ApiError(429, "Bạn đã có 5 yêu cầu VIP đang chờ.");
+      await tx.execute(sql`SELECT set_config('cinevjet.referral_v2','on',true)`);
       const r = await tx.execute(
         sql`INSERT INTO cinevjet.vip_purchase_requests(id,user_id,plan_id,plan_name,amount,duration_days,reward_tier,reward_schedule,benefits_json,bill_id,bill_url,bank_name,bank_account_number,bank_account_name,idempotency_key,user_note,payment_reference) VALUES(${randomUUID()},${userId},${p.id},${p.name},${p.price},${p.duration_days},${p.reward_tier},ARRAY(SELECT jsonb_array_elements_text(${JSON.stringify(p.checkin_rewards)}::jsonb)::integer),${JSON.stringify(p.benefits_json)}::jsonb,${d.bill_id || null},${billUrl},${bank.bank_name},${bank.account_number},${bank.account_name},${d.idempotency_key},${d.note},${"CVJ" + randomBytes(8).toString("hex").toUpperCase()}) RETURNING *`,
       );
@@ -235,11 +238,19 @@ export async function activateVipPurchaseInTransaction(tx: Executor, r: Record<s
   return subscriptionId;
 }
 export async function vipCommissionInTransaction(tx: Executor, r: Record<string, unknown>) {
+  if (await settleReferralCommission(tx, String(r.id))) return;
   const referred = (
     await tx.execute(sql`SELECT referred_by FROM cinevjet.users WHERE id=${r.user_id}`)
   ).rows[0];
   const referrerId = referred?.referred_by ? String(referred.referred_by) : "";
-  const commission = Math.floor((Number(r.amount) * 10) / 100);
+  const legacyPolicy = (
+    await tx.execute(
+      sql`SELECT level1_bps FROM cinevjet.referral_policy_versions WHERE id='legacy-10-percent'`,
+    )
+  ).rows[0];
+  if (!legacyPolicy) throw new ApiError(503, "Chưa tải được chính sách hoa hồng của đơn cũ.");
+  const legacyBps = Number(legacyPolicy.level1_bps);
+  const commission = commissionAmount(Number(r.amount), legacyBps);
   if (referrerId && referrerId !== String(r.user_id) && commission > 0) {
     const wallet = (
       await tx.execute(
@@ -248,7 +259,7 @@ export async function vipCommissionInTransaction(tx: Executor, r: Record<string,
     ).rows[0];
     if (wallet) {
       const inserted = await tx.execute(
-        sql`INSERT INTO cinevjet.referral_commissions(id,referrer_id,referred_user_id,source_id,percent,amount) VALUES(${randomUUID()},${referrerId},${r.user_id},${r.id},10,${commission}) ON CONFLICT(referred_user_id) DO NOTHING RETURNING id`,
+        sql`INSERT INTO cinevjet.referral_commissions(id,referrer_id,referred_user_id,source_id,percent,amount) VALUES(${randomUUID()},${referrerId},${r.user_id},${r.id},${legacyBps / 100},${commission}) ON CONFLICT(referred_user_id) DO NOTHING RETURNING id`,
       );
       if (inserted.rows.length) {
         await tx.execute(

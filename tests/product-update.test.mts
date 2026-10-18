@@ -196,8 +196,8 @@ test("referral stats include exactly three levels, actual deposits, pagination a
   assert.equal((await referralDashboard(root, { page: 2 })).members.length, 5);
   assert.equal((await referralDashboard(root, { level: 2 })).members[0].level, 2);
   assert.equal((await referralDashboard(outsider)).stats.total, 0);
-  assert.equal(dashboard.policy.status, "DRAFT");
-  assert.deepEqual(dashboard.policy.percentages, [20, 5, 1]);
+  assert.equal(dashboard.policy.status, "ACTIVE");
+  assert.deepEqual(dashboard.policy.percentages, [10, 2, 1]);
   assert.deepEqual(Object.keys(dashboard.members[0]).sort(), [
     "active",
     "funded",
