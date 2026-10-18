@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { randomUUID } from "node:crypto";
+import { randomUUID, randomBytes } from "node:crypto";
 import { readFile, readdir } from "node:fs/promises";
 import { PGlite } from "@electric-sql/pglite";
 import { drizzle as liteDrizzle } from "drizzle-orm/pglite";
@@ -14,6 +14,7 @@ import {
   reconcilePendingPayments,
   pendingVipPayment,
   paymentPresentation,
+  storedPayosOrder,
 } from "../src/server/payos-payments";
 import { signData, verifySignature } from "../src/server/payos-client";
 import {
@@ -41,6 +42,7 @@ import { checkOrigin } from "../src/server/http";
 import { GET as workerGet, POST as workerPost } from "../src/app/api/internal/finance-worker/route";
 
 let pg: PGlite | undefined, pool: Pool | undefined, runtimePool: Pool | undefined;
+process.env.BANK_ACCOUNT_ENCRYPTION_KEY = randomBytes(32).toString("base64url");
 const qaHost = process.env.PAYOS_SECURITY_DATABASE_URL
   ? "ep-late-credit-b3qu4dqn.c-4.ap-southeast-1.aws.neon.tech"
   : process.env.PAYOS_QA_HOST;
@@ -59,11 +61,15 @@ if (qaHost) {
   process.env.DATABASE_URL = url.toString();
   pool = new Pool({ ...pgConfig(), max: 12 });
   if (process.env.PAYOS_SECURITY_RUNTIME_ROLE) {
-    assert.equal(process.env.PAYOS_SECURITY_RUNTIME_ROLE, "cinevjet_runtime_security_20261018");
+    assert.ok(
+      ["cinevjet_runtime_security_20261018", "cinevjet_runtime_review_20261018"].includes(
+        process.env.PAYOS_SECURITY_RUNTIME_ROLE,
+      ),
+    );
     runtimePool = new Pool({
       ...pgConfig(),
       max: 12,
-      options: "-c role=cinevjet_runtime_security_20261018",
+      options: `-c role=${process.env.PAYOS_SECURITY_RUNTIME_ROLE}`,
     });
   }
   (globalThis as typeof globalThis & { cinevjetDatabase: NodePgDatabase }).cinevjetDatabase =
@@ -95,12 +101,14 @@ process.env.CINEVJET_PRODUCTION_ORIGINS = JSON.stringify([
 const callbacks = new Map<number, { returnUrl: string; cancelUrl: string }>();
 const infos = new Map<number, Record<string, unknown>>();
 let creates = 0,
+  providerRequests = 0,
   failCreateOnce = false,
   failBeforeCreate = false,
   lookupErrorOnce = false,
   delayLookupAfterCreate = false,
   failLookupCode = 0;
 globalThis.fetch = async (input, init) => {
+  providerRequests++;
   const url = String(input);
   if (url.includes("api.vietqr.io"))
     return Response.json({
@@ -339,6 +347,27 @@ test(
       );
       assert.equal(Number((await wallet()).balance), 0);
     });
+    await t.test(
+      "status GET projection is owner-scoped and cannot settle a remotely paid order",
+      async () => {
+        const beforeRequests = providerRequests;
+        const beforeWallet = await wallet();
+        assert.equal((await storedPayosOrder(order.id, user)).status, "PENDING");
+        await assert.rejects(storedPayosOrder(order.id, other));
+        assert.equal(providerRequests, beforeRequests);
+        assert.deepEqual(await wallet(), beforeWallet);
+        assert.equal(
+          Number(
+            (
+              await query("SELECT count(*) n FROM cinevjet.wallet_ledger WHERE reference_id=$1", [
+                order.id,
+              ])
+            ).rows[0].n,
+          ),
+          0,
+        );
+      },
+    );
     await t.test("ten webhooks plus reconciliation credit once", async () => {
       const calls = Array.from({ length: 10 }, () => () => receivePayosWebhook(webhook(order)));
       if (pool)
@@ -534,7 +563,7 @@ test(
         await approveVipPurchase(admin, manual.id, {
           action: "APPROVE",
           confirmed: true,
-          evidence_reference: "LOCAL-LEGACY-MANUAL-1",
+          evidence_reference: `LOCAL-LEGACY-MANUAL-${manual.id}`,
         });
         assert.equal(Number((await wallet()).balance), 225000);
       },

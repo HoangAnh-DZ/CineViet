@@ -138,6 +138,14 @@ export async function moneyTransactions(actor: string) {
   );
   return r.rows.map((r) => ({
     ...r,
+    ...(r.kind === "WITHDRAWAL"
+      ? {
+          bank_account_number: r.bank_account_number
+            ? "••••" + String(r.bank_account_number).slice(-4)
+            : null,
+          bank_account_name: null,
+        }
+      : {}),
     amount: Number(r.amount),
     fee: Number(r.fee),
     coins_amount: r.coins_amount === null ? null : Number(r.coins_amount),
@@ -184,6 +192,10 @@ export async function withdrawalTransactions(actor: string, filters: WithdrawalF
       return {
         items: rows.rows.map((r) => ({
           ...r,
+          bank_account_number: r.bank_account_number
+            ? "••••" + String(r.bank_account_number).slice(-4)
+            : null,
+          bank_account_name: null,
           amount: Number(r.amount),
           fee: Number(r.fee),
           coins_amount: r.coins_amount == null ? null : Number(r.coins_amount),

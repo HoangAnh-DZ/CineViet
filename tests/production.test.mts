@@ -51,6 +51,11 @@ const credentials = {
   remember: true,
 };
 let account: Awaited<ReturnType<typeof register>>;
+const loginCredentials = {
+  email: credentials.email,
+  password: credentials.password,
+  remember: credentials.remember,
+};
 test("production repositories on isolated PostgreSQL", async (t) => {
   await t.test("schema and seed contain 12 movies, 40 episodes, no users or money", async () => {
     const counts = await postgres.query<{
@@ -123,9 +128,9 @@ test("production repositories on isolated PostgreSQL", async (t) => {
     },
   );
   await t.test("login works; wrong password fails", async () => {
-    const valid = await login(credentials);
+    const valid = await login(loginCredentials);
     assert.equal(valid.user.id, account.user.id);
-    await assert.rejects(login({ ...credentials, password: "wrong-password" }), /không đúng/);
+    await assert.rejects(login({ ...loginCredentials, password: "wrong-password" }), /không đúng/);
   });
   await t.test("expired session and suspended user cannot authenticate", async () => {
     await postgres.query(
@@ -133,7 +138,7 @@ test("production repositories on isolated PostgreSQL", async (t) => {
       [account.session.id],
     );
     assert.equal(await resolveSession(account.session.token), null);
-    account = await login(credentials);
+    account = await login(loginCredentials);
     await postgres.query("UPDATE cinevjet.users SET status='SUSPENDED' WHERE id=$1", [
       account.user.id,
     ]);
@@ -163,8 +168,14 @@ test("production repositories on isolated PostgreSQL", async (t) => {
       ]) {
         await assert.rejects(register({ ...original, email }), /Email đã được sử dụng/);
       }
-      assert.equal((await login(original)).user.id, gmailAccount.user.id);
-      assert.equal((await login(original)).user.email, "qa.alias@gmail.com");
+      assert.equal(
+        (await login({ ...loginCredentials, email: original.email })).user.id,
+        gmailAccount.user.id,
+      );
+      assert.equal(
+        (await login({ ...loginCredentials, email: original.email })).user.email,
+        "qa.alias@gmail.com",
+      );
       assert.equal(
         (
           await postgres.query<{ count: number }>(
@@ -197,7 +208,7 @@ test("production repositories on isolated PostgreSQL", async (t) => {
         /1 giờ/,
       );
       await throttleAuth("ip:registration-limit-ip", 60);
-      assert.equal((await login(credentials)).user.id, account.user.id);
+      assert.equal((await login(loginCredentials)).user.id, account.user.id);
     },
   );
   await t.test(

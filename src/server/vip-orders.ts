@@ -7,17 +7,8 @@ import { cancelVipPayment } from "./payos-payments";
 import { ApiError } from "./http";
 
 export async function vipOrderState(userId: string) {
-  const expired = (
-    await database().execute(
-      sql`SELECT id FROM cinevjet.payos_orders WHERE user_id=${userId} AND kind='VIP_PURCHASE' AND status IN ('CREATING','PENDING','UNDERPAID','PROCESSING') AND expires_at<=now() ORDER BY created_at LIMIT 5`,
-    )
-  ).rows;
-  // An unavailable provider must not hide history or claim an unverified cancel.
-  for (const r of expired) {
-    try {
-      await cancelVipPayment(String(r.id), userId, true);
-    } catch {}
-  }
+  // History GET is read-only. Expiry/settlement runs through the authenticated
+  // reconciliation POST, verified webhook or authorized worker instead.
   const [requests, purchased] = await Promise.all([
     userVipPurchases(userId),
     purchasedVipPlanIds(userId),

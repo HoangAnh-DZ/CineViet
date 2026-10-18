@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile, readdir } from "node:fs/promises";
+import { randomBytes } from "node:crypto";
 import { PGlite } from "@electric-sql/pglite";
 import { drizzle } from "drizzle-orm/pglite";
 import type { NodePgDatabase } from "drizzle-orm/node-postgres";
@@ -10,6 +11,7 @@ import {
   memberActivity,
 } from "../src/features/admin/presentation-data";
 const pg = new PGlite();
+process.env.AUTH_SECRET = randomBytes(48).toString("base64url");
 for (const f of (await readdir("database/migrations")).filter((f) => f.endsWith(".sql")).sort())
   await pg.exec(await readFile("database/migrations/" + f, "utf8"));
 await pg.exec(await readFile("database/seed.sql", "utf8"));
@@ -82,4 +84,3 @@ test("presentation reads preserve all existing database rows", async () => {
 test.after(async () => {
   await pg.close();
 });
-

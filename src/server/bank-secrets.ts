@@ -41,3 +41,27 @@ export function bankFingerprint(userId: string, bankCode: string, number: string
     .update(`bank-dedup:v1:${userId}:${bankCode}:${number}`)
     .digest("hex");
 }
+
+const withdrawalPrefix = "bank-snapshot:v1:";
+// Direct-entry withdrawals have no saved-account FK. Migration 0019 binds that
+// FK to bank_snapshot_ciphertext, so their authenticated envelope lives in the
+// existing destination text field. This requires no DDL or historical rewrite.
+export async function sealedWithdrawalDestination(
+  userId: string,
+  id: string,
+  details: BankDetails,
+) {
+  return withdrawalPrefix + (await sealBankDetails(details, `withdrawal:${userId}:${id}`));
+}
+export async function withdrawalBankDetails(row: Record<string, unknown>): Promise<BankDetails> {
+  const destination = String(row.destination || "");
+  const cipher =
+    row.bank_snapshot_ciphertext ||
+    (destination.startsWith(withdrawalPrefix) ? destination.slice(withdrawalPrefix.length) : null);
+  if (cipher) return openBankDetails(String(cipher), `withdrawal:${row.user_id}:${row.id}`);
+  // Existing plaintext requests remain readable; never copy them into new rows.
+  const number = String(row.bank_account_number || "");
+  if (!/^\d{4,40}$/.test(number))
+    throw new ApiError(503, "Chưa đọc được thông tin ngân hàng an toàn.");
+  return { account_number: number, account_holder_name: String(row.bank_account_name || "") };
+}

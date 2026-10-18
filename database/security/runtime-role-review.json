@@ -1,0 +1,2137 @@
+{
+  "proposalOnly": true,
+  "productionApplied": false,
+  "policy": "database/security/runtime-role-candidate.sql",
+  "requiresSeparateApproval": true,
+  "notes": [
+    "Candidate SQL is for a new role; it refuses to overwrite an existing role.",
+    "PUBLIC function revocations affect other roles and require separate review.",
+    "Future owner default privileges need explicit review; no future object grants are implied.",
+    "Shared runtime role relies on API authentication/authorization; this proposal does not enable RLS."
+  ],
+  "updateColumns": {
+    "users": [
+      "display_name",
+      "referral_code",
+      "status",
+      "updated_at"
+    ],
+    "watch_history": [
+      "completed",
+      "duration_seconds",
+      "position_seconds",
+      "updated_at"
+    ],
+    "vip_plans": [
+      "active",
+      "additional_amount",
+      "duration_days",
+      "mission_count",
+      "mission_reward",
+      "name",
+      "price",
+      "purchase_enabled"
+    ],
+    "short_videos": [
+      "creator_name",
+      "creator_url",
+      "deleted_at",
+      "description",
+      "display_order",
+      "duration_seconds",
+      "embed_confirmed_at",
+      "embed_status",
+      "episode_id",
+      "hashtags",
+      "is_active",
+      "last_checked_at",
+      "last_error",
+      "movie_id",
+      "next_check_at",
+      "permission_evidence",
+      "permission_status",
+      "publish_status",
+      "published_at",
+      "reviewed_by",
+      "source_credit",
+      "source_type",
+      "thumbnail_url",
+      "title",
+      "updated_at",
+      "video_url"
+    ],
+    "registration_challenges": [
+      "attempts",
+      "used_at"
+    ],
+    "auth_limits": [
+      "attempts",
+      "window_start"
+    ],
+    "user_bank_accounts": [
+      "deleted_at",
+      "is_default",
+      "updated_at"
+    ],
+    "movies": [
+      "attribution",
+      "backdrop_url",
+      "country",
+      "description",
+      "duration_minutes",
+      "duration_seconds",
+      "is_demo",
+      "language",
+      "license_name",
+      "license_source_url",
+      "license_url",
+      "original_title",
+      "poster_attribution",
+      "poster_url",
+      "rating",
+      "release_year",
+      "slug",
+      "source_page_url",
+      "status",
+      "title",
+      "type",
+      "updated_at",
+      "vip_required"
+    ],
+    "video_sources": [
+      "is_active"
+    ],
+    "episodes": [
+      "description",
+      "duration_seconds",
+      "episode_number",
+      "release_date",
+      "season_number",
+      "status",
+      "thumbnail_url",
+      "title"
+    ],
+    "wallets": [
+      "balance",
+      "reserved"
+    ],
+    "withdrawal_jobs": [
+      "attempts",
+      "completed_at",
+      "evidence_reference",
+      "evidence_url",
+      "last_error_code",
+      "lease_token",
+      "leased_until",
+      "next_attempt_at",
+      "provider_id",
+      "status",
+      "updated_at"
+    ],
+    "withdrawals": [
+      "admin_note",
+      "completed_at",
+      "public_reason",
+      "rejected_at",
+      "reviewed_by",
+      "status",
+      "updated_at"
+    ],
+    "coin_wallets": [
+      "balance",
+      "reserved"
+    ],
+    "deposits": [
+      "admin_note",
+      "bank_account_name",
+      "bank_account_number",
+      "bank_name",
+      "completed_at",
+      "public_reason",
+      "rejected_at",
+      "reviewed_by",
+      "status",
+      "updated_at"
+    ],
+    "reward_watch_sessions": [
+      "id",
+      "last_at",
+      "nonce",
+      "playing",
+      "position_seconds",
+      "previous_nonce",
+      "request_hash",
+      "source_id"
+    ],
+    "daily_watch_progress": [
+      "watched_ms"
+    ],
+    "vip_purchase_requests": [
+      "admin_note",
+      "bank_evidence_reference",
+      "completed_at",
+      "public_reason",
+      "rejected_at",
+      "reviewed_by",
+      "status",
+      "subscription_id",
+      "updated_at"
+    ],
+    "payos_orders": [
+      "account_name",
+      "account_number",
+      "bank_code",
+      "checked_at",
+      "checkout_url",
+      "payment_link_id",
+      "qr_code",
+      "settled_at",
+      "status",
+      "updated_at"
+    ],
+    "reward_codes": [
+      "redeemed_count"
+    ],
+    "vip_checkin_cycles": [
+      "completed_at",
+      "current_day",
+      "status"
+    ],
+    "short_sources": [
+      "authorization_status",
+      "creator_name",
+      "last_error",
+      "last_synced_at",
+      "permission_evidence",
+      "reviewed_by",
+      "sync_enabled",
+      "updated_at"
+    ],
+    "short_sync_control": [
+      "daily_target",
+      "enabled",
+      "lease_token",
+      "leased_until"
+    ],
+    "short_sync_runs": [
+      "candidates_checked",
+      "error_summary",
+      "finished_at",
+      "status",
+      "videos_added",
+      "videos_skipped"
+    ],
+    "short_sync_days": [
+      "videos_added"
+    ],
+    "system_settings": [
+      "account_name",
+      "account_number",
+      "bank_name",
+      "deposit_enabled",
+      "max_amount",
+      "min_deposit",
+      "min_withdrawal",
+      "updated_at",
+      "updated_by",
+      "withdrawal_enabled",
+      "withdrawal_fee"
+    ],
+    "vip_subscriptions": [
+      "status"
+    ],
+    "payout_control": [
+      "daily_limit",
+      "interval_seconds",
+      "lease_token",
+      "leased_until",
+      "next_dispatch_at",
+      "paused",
+      "transaction_limit",
+      "updated_at"
+    ]
+  },
+  "apiEntryPoints": [
+    {
+      "file": "src/app/api/account/banks/route.ts",
+      "line": 5,
+      "method": "GET",
+      "path": "/api/account/banks",
+      "guards": [
+        "requireUser",
+        "checkOrigin"
+      ]
+    },
+    {
+      "file": "src/app/api/account/banks/route.ts",
+      "line": 13,
+      "method": "POST",
+      "path": "/api/account/banks",
+      "guards": [
+        "requireUser",
+        "checkOrigin"
+      ]
+    },
+    {
+      "file": "src/app/api/account/banks/[id]/route.ts",
+      "line": 21,
+      "method": "PATCH",
+      "path": "/api/account/banks/[id]",
+      "guards": [
+        "requireUser",
+        "checkOrigin"
+      ]
+    },
+    {
+      "file": "src/app/api/account/banks/[id]/route.ts",
+      "line": 34,
+      "method": "DELETE",
+      "path": "/api/account/banks/[id]",
+      "guards": [
+        "requireUser",
+        "checkOrigin"
+      ]
+    },
+    {
+      "file": "src/app/api/account/route.ts",
+      "line": 9,
+      "method": "GET",
+      "path": "/api/account",
+      "guards": [
+        "requireUser",
+        "checkOrigin"
+      ]
+    },
+    {
+      "file": "src/app/api/account/route.ts",
+      "line": 41,
+      "method": "PATCH",
+      "path": "/api/account",
+      "guards": [
+        "requireUser",
+        "checkOrigin"
+      ]
+    },
+    {
+      "file": "src/app/api/admin/money/[kind]/[id]/route.ts",
+      "line": 12,
+      "method": "GET",
+      "path": "/api/admin/money/[kind]/[id]",
+      "guards": [
+        "requireAdmin",
+        "checkOrigin"
+      ]
+    },
+    {
+      "file": "src/app/api/admin/money/[kind]/[id]/route.ts",
+      "line": 24,
+      "method": "POST",
+      "path": "/api/admin/money/[kind]/[id]",
+      "guards": [
+        "requireAdmin",
+        "checkOrigin"
+      ]
+    },
+    {
+      "file": "src/app/api/admin/movies/route.ts",
+      "line": 5,
+      "method": "GET",
+      "path": "/api/admin/movies",
+      "guards": [
+        "requireAdmin",
+        "checkOrigin"
+      ]
+    },
+    {
+      "file": "src/app/api/admin/movies/route.ts",
+      "line": 22,
+      "method": "POST",
+      "path": "/api/admin/movies",
+      "guards": [
+        "requireAdmin",
+        "checkOrigin"
+      ]
+    },
+    {
+      "file": "src/app/api/admin/movies/[id]/route.ts",
+      "line": 5,
+      "method": "GET",
+      "path": "/api/admin/movies/[id]",
+      "guards": [
+        "requireAdmin",
+        "checkOrigin"
+      ]
+    },
+    {
+      "file": "src/app/api/admin/movies/[id]/route.ts",
+      "line": 13,
+      "method": "PUT",
+      "path": "/api/admin/movies/[id]",
+      "guards": [
+        "requireAdmin",
+        "checkOrigin"
+      ]
+    },
+    {
+      "file": "src/app/api/admin/movies/[id]/route.ts",
+      "line": 22,
+      "method": "DELETE",
+      "path": "/api/admin/movies/[id]",
+      "guards": [
+        "requireAdmin",
+        "checkOrigin"
+      ]
+    },
+    {
+      "file": "src/app/api/admin/payments/payos/route.ts",
+      "line": 13,
+      "method": "GET",
+      "path": "/api/admin/payments/payos",
+      "guards": [
+        "requireAdmin",
+        "checkOrigin"
+      ]
+    },
+    {
+      "file": "src/app/api/admin/payments/payos/route.ts",
+      "line": 36,
+      "method": "POST",
+      "path": "/api/admin/payments/payos",
+      "guards": [
+        "requireAdmin",
+        "checkOrigin"
+      ]
+    },
+    {
+      "file": "src/app/api/admin/plans/[id]/route.ts",
+      "line": 5,
+      "method": "PATCH",
+      "path": "/api/admin/plans/[id]",
+      "guards": [
+        "requireAdmin",
+        "checkOrigin"
+      ]
+    },
+    {
+      "file": "src/app/api/admin/reward-codes/route.ts",
+      "line": 4,
+      "method": "GET",
+      "path": "/api/admin/reward-codes",
+      "guards": [
+        "requireAdmin",
+        "checkOrigin"
+      ]
+    },
+    {
+      "file": "src/app/api/admin/reward-codes/route.ts",
+      "line": 11,
+      "method": "POST",
+      "path": "/api/admin/reward-codes",
+      "guards": [
+        "requireAdmin",
+        "checkOrigin"
+      ]
+    },
+    {
+      "file": "src/app/api/admin/settings/route.ts",
+      "line": 5,
+      "method": "GET",
+      "path": "/api/admin/settings",
+      "guards": [
+        "requireAdmin",
+        "checkOrigin"
+      ]
+    },
+    {
+      "file": "src/app/api/admin/settings/route.ts",
+      "line": 9,
+      "method": "PATCH",
+      "path": "/api/admin/settings",
+      "guards": [
+        "requireAdmin",
+        "checkOrigin"
+      ]
+    },
+    {
+      "file": "src/app/api/admin/shorts/movies/route.ts",
+      "line": 4,
+      "method": "GET",
+      "path": "/api/admin/shorts/movies",
+      "guards": [
+        "requireAdmin"
+      ]
+    },
+    {
+      "file": "src/app/api/admin/shorts/route.ts",
+      "line": 6,
+      "method": "GET",
+      "path": "/api/admin/shorts",
+      "guards": [
+        "requireAdmin",
+        "checkOrigin"
+      ]
+    },
+    {
+      "file": "src/app/api/admin/shorts/route.ts",
+      "line": 16,
+      "method": "POST",
+      "path": "/api/admin/shorts",
+      "guards": [
+        "requireAdmin",
+        "checkOrigin"
+      ]
+    },
+    {
+      "file": "src/app/api/admin/shorts/social/route.ts",
+      "line": 15,
+      "method": "GET",
+      "path": "/api/admin/shorts/social",
+      "guards": [
+        "requireAdmin",
+        "checkOrigin"
+      ]
+    },
+    {
+      "file": "src/app/api/admin/shorts/social/route.ts",
+      "line": 25,
+      "method": "POST",
+      "path": "/api/admin/shorts/social",
+      "guards": [
+        "requireAdmin",
+        "checkOrigin"
+      ]
+    },
+    {
+      "file": "src/app/api/admin/shorts/uploads/complete/route.ts",
+      "line": 5,
+      "method": "POST",
+      "path": "/api/admin/shorts/uploads/complete",
+      "guards": [
+        "requireAdmin",
+        "checkOrigin"
+      ]
+    },
+    {
+      "file": "src/app/api/admin/shorts/uploads/route.ts",
+      "line": 5,
+      "method": "POST",
+      "path": "/api/admin/shorts/uploads",
+      "guards": [
+        "handleUpload",
+        "requireAdmin",
+        "checkOrigin"
+      ]
+    },
+    {
+      "file": "src/app/api/admin/shorts/[id]/route.ts",
+      "line": 6,
+      "method": "PUT",
+      "path": "/api/admin/shorts/[id]",
+      "guards": [
+        "requireAdmin",
+        "checkOrigin"
+      ]
+    },
+    {
+      "file": "src/app/api/admin/shorts/[id]/route.ts",
+      "line": 15,
+      "method": "PATCH",
+      "path": "/api/admin/shorts/[id]",
+      "guards": [
+        "requireAdmin",
+        "checkOrigin"
+      ]
+    },
+    {
+      "file": "src/app/api/admin/shorts/[id]/route.ts",
+      "line": 28,
+      "method": "DELETE",
+      "path": "/api/admin/shorts/[id]",
+      "guards": [
+        "requireAdmin",
+        "checkOrigin"
+      ]
+    },
+    {
+      "file": "src/app/api/admin/users/route.ts",
+      "line": 4,
+      "method": "GET",
+      "path": "/api/admin/users",
+      "guards": [
+        "requireAdmin"
+      ]
+    },
+    {
+      "file": "src/app/api/admin/users/[id]/route.ts",
+      "line": 6,
+      "method": "PATCH",
+      "path": "/api/admin/users/[id]",
+      "guards": [
+        "requireAdmin",
+        "checkOrigin"
+      ]
+    },
+    {
+      "file": "src/app/api/admin/users/[id]/route.ts",
+      "line": 20,
+      "method": "GET",
+      "path": "/api/admin/users/[id]",
+      "guards": [
+        "requireAdmin",
+        "checkOrigin"
+      ]
+    },
+    {
+      "file": "src/app/api/admin/withdrawal-queue/route.ts",
+      "line": 12,
+      "method": "GET",
+      "path": "/api/admin/withdrawal-queue",
+      "guards": [
+        "requireAdmin",
+        "checkOrigin"
+      ]
+    },
+    {
+      "file": "src/app/api/admin/withdrawal-queue/route.ts",
+      "line": 19,
+      "method": "POST",
+      "path": "/api/admin/withdrawal-queue",
+      "guards": [
+        "requireAdmin",
+        "checkOrigin"
+      ]
+    },
+    {
+      "file": "src/app/api/admin/withdrawals/route.ts",
+      "line": 4,
+      "method": "GET",
+      "path": "/api/admin/withdrawals",
+      "guards": [
+        "requireAdmin"
+      ]
+    },
+    {
+      "file": "src/app/api/auth/[action]/route.ts",
+      "line": 22,
+      "method": "GET",
+      "path": "/api/auth/[action]",
+      "guards": [
+        "checkOrigin"
+      ]
+    },
+    {
+      "file": "src/app/api/auth/[action]/route.ts",
+      "line": 30,
+      "method": "POST",
+      "path": "/api/auth/[action]",
+      "guards": [
+        "checkOrigin"
+      ]
+    },
+    {
+      "file": "src/app/api/catalog/route.ts",
+      "line": 4,
+      "method": "GET",
+      "path": "/api/catalog",
+      "guards": []
+    },
+    {
+      "file": "src/app/api/demo/payments/route.ts",
+      "line": 1,
+      "method": "GET",
+      "path": "/api/demo/payments",
+      "guards": []
+    },
+    {
+      "file": "src/app/api/demo/payments/route.ts",
+      "line": 4,
+      "method": "POST",
+      "path": "/api/demo/payments",
+      "guards": []
+    },
+    {
+      "file": "src/app/api/demo/rewards/route.ts",
+      "line": 1,
+      "method": "GET",
+      "path": "/api/demo/rewards",
+      "guards": []
+    },
+    {
+      "file": "src/app/api/demo/rewards/route.ts",
+      "line": 4,
+      "method": "POST",
+      "path": "/api/demo/rewards",
+      "guards": []
+    },
+    {
+      "file": "src/app/api/favorites/route.ts",
+      "line": 4,
+      "method": "PUT",
+      "path": "/api/favorites",
+      "guards": [
+        "requireUser",
+        "checkOrigin"
+      ]
+    },
+    {
+      "file": "src/app/api/internal/finance-worker/route.ts",
+      "line": 20,
+      "method": "GET",
+      "path": "/api/internal/finance-worker",
+      "guards": [
+        "authorized"
+      ]
+    },
+    {
+      "file": "src/app/api/internal/finance-worker/route.ts",
+      "line": 33,
+      "method": "POST",
+      "path": "/api/internal/finance-worker",
+      "guards": [
+        "authorized"
+      ]
+    },
+    {
+      "file": "src/app/api/internal/shorts-sync/route.ts",
+      "line": 7,
+      "method": "GET",
+      "path": "/api/internal/shorts-sync",
+      "guards": [
+        "authorizedCron"
+      ]
+    },
+    {
+      "file": "src/app/api/library/history/route.ts",
+      "line": 5,
+      "method": "DELETE",
+      "path": "/api/library/history",
+      "guards": [
+        "requireUser",
+        "checkOrigin"
+      ]
+    },
+    {
+      "file": "src/app/api/library/route.ts",
+      "line": 4,
+      "method": "GET",
+      "path": "/api/library",
+      "guards": [
+        "requireUser"
+      ]
+    },
+    {
+      "file": "src/app/api/library/shorts/[id]/route.ts",
+      "line": 5,
+      "method": "PUT",
+      "path": "/api/library/shorts/[id]",
+      "guards": [
+        "requireUser",
+        "checkOrigin"
+      ]
+    },
+    {
+      "file": "src/app/api/money/banks/route.ts",
+      "line": 4,
+      "method": "GET",
+      "path": "/api/money/banks",
+      "guards": [
+        "requireUser"
+      ]
+    },
+    {
+      "file": "src/app/api/money/bills/route.ts",
+      "line": 7,
+      "method": "POST",
+      "path": "/api/money/bills",
+      "guards": [
+        "requireUser",
+        "checkOrigin"
+      ]
+    },
+    {
+      "file": "src/app/api/money/config/route.ts",
+      "line": 3,
+      "method": "GET",
+      "path": "/api/money/config",
+      "guards": []
+    },
+    {
+      "file": "src/app/api/money/deposits/route.ts",
+      "line": 5,
+      "method": "POST",
+      "path": "/api/money/deposits",
+      "guards": [
+        "requireUser",
+        "checkOrigin"
+      ]
+    },
+    {
+      "file": "src/app/api/money/requests/route.ts",
+      "line": 4,
+      "method": "GET",
+      "path": "/api/money/requests",
+      "guards": [
+        "requireUser"
+      ]
+    },
+    {
+      "file": "src/app/api/money/withdrawals/route.ts",
+      "line": 5,
+      "method": "POST",
+      "path": "/api/money/withdrawals",
+      "guards": [
+        "requireUser",
+        "checkOrigin"
+      ]
+    },
+    {
+      "file": "src/app/api/payments/payos/route.ts",
+      "line": 7,
+      "method": "GET",
+      "path": "/api/payments/payos",
+      "guards": [
+        "requireUser",
+        "checkOrigin"
+      ]
+    },
+    {
+      "file": "src/app/api/payments/payos/route.ts",
+      "line": 21,
+      "method": "POST",
+      "path": "/api/payments/payos",
+      "guards": [
+        "requireUser",
+        "checkOrigin"
+      ]
+    },
+    {
+      "file": "src/app/api/payments/payos/webhook/route.ts",
+      "line": 4,
+      "method": "POST",
+      "path": "/api/payments/payos/webhook",
+      "guards": [
+        "receivePayosWebhook"
+      ]
+    },
+    {
+      "file": "src/app/api/payments/payos/[id]/route.ts",
+      "line": 11,
+      "method": "GET",
+      "path": "/api/payments/payos/[id]",
+      "guards": [
+        "requireUser",
+        "checkOrigin"
+      ]
+    },
+    {
+      "file": "src/app/api/payments/payos/[id]/route.ts",
+      "line": 25,
+      "method": "POST",
+      "path": "/api/payments/payos/[id]",
+      "guards": [
+        "requireUser",
+        "checkOrigin"
+      ]
+    },
+    {
+      "file": "src/app/api/progress/route.ts",
+      "line": 4,
+      "method": "PUT",
+      "path": "/api/progress",
+      "guards": [
+        "requireUser",
+        "checkOrigin"
+      ]
+    },
+    {
+      "file": "src/app/api/referrals/route.ts",
+      "line": 6,
+      "method": "GET",
+      "path": "/api/referrals",
+      "guards": [
+        "requireUser"
+      ]
+    },
+    {
+      "file": "src/app/api/rewards/codes/route.ts",
+      "line": 5,
+      "method": "POST",
+      "path": "/api/rewards/codes",
+      "guards": [
+        "requireUser",
+        "checkOrigin"
+      ]
+    },
+    {
+      "file": "src/app/api/rewards/missions/route.ts",
+      "line": 5,
+      "method": "GET",
+      "path": "/api/rewards/missions",
+      "guards": [
+        "requireUser",
+        "checkOrigin"
+      ]
+    },
+    {
+      "file": "src/app/api/rewards/missions/route.ts",
+      "line": 12,
+      "method": "POST",
+      "path": "/api/rewards/missions",
+      "guards": [
+        "requireUser",
+        "checkOrigin"
+      ]
+    },
+    {
+      "file": "src/app/api/rewards/redemptions/route.ts",
+      "line": 6,
+      "method": "GET",
+      "path": "/api/rewards/redemptions",
+      "guards": [
+        "requireUser",
+        "checkOrigin"
+      ]
+    },
+    {
+      "file": "src/app/api/rewards/redemptions/route.ts",
+      "line": 19,
+      "method": "POST",
+      "path": "/api/rewards/redemptions",
+      "guards": [
+        "requireUser",
+        "checkOrigin"
+      ]
+    },
+    {
+      "file": "src/app/api/rewards/route.ts",
+      "line": 6,
+      "method": "GET",
+      "path": "/api/rewards",
+      "guards": [
+        "requireUser",
+        "checkOrigin"
+      ]
+    },
+    {
+      "file": "src/app/api/rewards/route.ts",
+      "line": 13,
+      "method": "POST",
+      "path": "/api/rewards",
+      "guards": [
+        "requireUser",
+        "checkOrigin"
+      ]
+    },
+    {
+      "file": "src/app/api/rewards/watch/route.ts",
+      "line": 5,
+      "method": "POST",
+      "path": "/api/rewards/watch",
+      "guards": [
+        "requireUser",
+        "checkOrigin"
+      ]
+    },
+    {
+      "file": "src/app/api/rewards/watch/route.ts",
+      "line": 15,
+      "method": "PUT",
+      "path": "/api/rewards/watch",
+      "guards": [
+        "requireUser",
+        "checkOrigin"
+      ]
+    },
+    {
+      "file": "src/app/api/shorts/route.ts",
+      "line": 5,
+      "method": "GET",
+      "path": "/api/shorts",
+      "guards": []
+    },
+    {
+      "file": "src/app/api/vip/purchases/route.ts",
+      "line": 7,
+      "method": "GET",
+      "path": "/api/vip/purchases",
+      "guards": [
+        "requireUser",
+        "checkOrigin"
+      ]
+    },
+    {
+      "file": "src/app/api/vip/purchases/route.ts",
+      "line": 29,
+      "method": "POST",
+      "path": "/api/vip/purchases",
+      "guards": [
+        "requireUser",
+        "checkOrigin"
+      ]
+    },
+    {
+      "file": "src/app/api/vip/purchases/[id]/route.ts",
+      "line": 7,
+      "method": "POST",
+      "path": "/api/vip/purchases/[id]",
+      "guards": [
+        "requireUser",
+        "checkOrigin"
+      ]
+    }
+  ],
+  "backendWrites": [
+    {
+      "file": "src/app/api/account/route.ts",
+      "line": 50,
+      "owner": "PATCH",
+      "operations": [
+        "UPDATE cinevjet.users"
+      ]
+    },
+    {
+      "file": "src/server/account.ts",
+      "line": 44,
+      "owner": "setFavorite",
+      "operations": [
+        "INSERT INTO cinevjet.favorites"
+      ]
+    },
+    {
+      "file": "src/server/account.ts",
+      "line": 48,
+      "owner": "setFavorite",
+      "operations": [
+        "DELETE FROM cinevjet.favorites"
+      ]
+    },
+    {
+      "file": "src/server/account.ts",
+      "line": 73,
+      "owner": "saveWatchProgress",
+      "operations": [
+        "INSERT INTO cinevjet.watch_history"
+      ]
+    },
+    {
+      "file": "src/server/account.ts",
+      "line": 166,
+      "owner": "referralSummary",
+      "operations": [
+        "UPDATE cinevjet.users"
+      ]
+    },
+    {
+      "file": "src/server/admin-plans.ts",
+      "line": 29,
+      "owner": "updateVipPlan",
+      "operations": [
+        "UPDATE cinevjet.vip_plans"
+      ]
+    },
+    {
+      "file": "src/server/admin-shorts.ts",
+      "line": 61,
+      "owner": "saveShort",
+      "operations": [
+        "UPDATE cinevjet.short_videos"
+      ]
+    },
+    {
+      "file": "src/server/admin-shorts.ts",
+      "line": 65,
+      "owner": "saveShort",
+      "operations": [
+        "INSERT INTO cinevjet.short_videos"
+      ]
+    },
+    {
+      "file": "src/server/admin-shorts.ts",
+      "line": 73,
+      "owner": "setShortActive",
+      "operations": [
+        "UPDATE cinevjet.short_videos"
+      ]
+    },
+    {
+      "file": "src/server/admin-shorts.ts",
+      "line": 82,
+      "owner": "deleteShort",
+      "operations": [
+        "UPDATE cinevjet.short_videos"
+      ]
+    },
+    {
+      "file": "src/server/auth-core.ts",
+      "line": 45,
+      "owner": "createRegistrationChallenge",
+      "operations": [
+        "INSERT INTO cinevjet.registration_challenges"
+      ]
+    },
+    {
+      "file": "src/server/auth-core.ts",
+      "line": 64,
+      "owner": "verifyRegistrationChallenge",
+      "operations": [
+        "UPDATE cinevjet.registration_challenges"
+      ]
+    },
+    {
+      "file": "src/server/auth-core.ts",
+      "line": 69,
+      "owner": "verifyRegistrationChallenge",
+      "operations": [
+        "UPDATE cinevjet.registration_challenges"
+      ]
+    },
+    {
+      "file": "src/server/auth-core.ts",
+      "line": 98,
+      "owner": "throttleAuth",
+      "operations": [
+        "INSERT INTO cinevjet.auth_limits"
+      ]
+    },
+    {
+      "file": "src/server/auth-core.ts",
+      "line": 128,
+      "owner": "register",
+      "operations": [
+        "INSERT INTO cinevjet.auth_limits"
+      ]
+    },
+    {
+      "file": "src/server/auth-core.ts",
+      "line": 149,
+      "owner": "register",
+      "operations": [
+        "INSERT INTO cinevjet.users"
+      ]
+    },
+    {
+      "file": "src/server/auth-core.ts",
+      "line": 152,
+      "owner": "register",
+      "operations": [
+        "INSERT INTO cinevjet.coin_wallets"
+      ]
+    },
+    {
+      "file": "src/server/auth-core.ts",
+      "line": 153,
+      "owner": "register",
+      "operations": [
+        "INSERT INTO cinevjet.wallets"
+      ]
+    },
+    {
+      "file": "src/server/auth-core.ts",
+      "line": 155,
+      "owner": "register",
+      "operations": [
+        "INSERT INTO cinevjet.sessions"
+      ]
+    },
+    {
+      "file": "src/server/auth-core.ts",
+      "line": 174,
+      "owner": "login",
+      "operations": [
+        "INSERT INTO cinevjet.sessions"
+      ]
+    },
+    {
+      "file": "src/server/auth-core.ts",
+      "line": 187,
+      "owner": "invalidateSession",
+      "operations": [
+        "DELETE FROM cinevjet.sessions"
+      ]
+    },
+    {
+      "file": "src/server/bank-accounts.ts",
+      "line": 89,
+      "owner": "saveBankAccount",
+      "operations": [
+        "UPDATE cinevjet.user_bank_accounts"
+      ]
+    },
+    {
+      "file": "src/server/bank-accounts.ts",
+      "line": 93,
+      "owner": "saveBankAccount",
+      "operations": [
+        "INSERT INTO cinevjet.user_bank_accounts"
+      ]
+    },
+    {
+      "file": "src/server/bank-accounts.ts",
+      "line": 108,
+      "owner": "defaultBankAccount",
+      "operations": [
+        "UPDATE cinevjet.user_bank_accounts"
+      ]
+    },
+    {
+      "file": "src/server/bank-accounts.ts",
+      "line": 111,
+      "owner": "defaultBankAccount",
+      "operations": [
+        "UPDATE cinevjet.user_bank_accounts"
+      ]
+    },
+    {
+      "file": "src/server/bank-accounts.ts",
+      "line": 121,
+      "owner": "deleteBankAccount",
+      "operations": [
+        "UPDATE cinevjet.user_bank_accounts"
+      ]
+    },
+    {
+      "file": "src/server/bank-accounts.ts",
+      "line": 127,
+      "owner": "deleteBankAccount",
+      "operations": [
+        "UPDATE cinevjet.user_bank_accounts"
+      ]
+    },
+    {
+      "file": "src/server/bill-storage.ts",
+      "line": 49,
+      "owner": "saveBillUpload",
+      "operations": [
+        "INSERT INTO cinevjet.deposit_bills"
+      ]
+    },
+    {
+      "file": "src/server/dashboard.ts",
+      "line": 293,
+      "owner": "saveMovie",
+      "operations": [
+        "UPDATE cinevjet.movies"
+      ]
+    },
+    {
+      "file": "src/server/dashboard.ts",
+      "line": 297,
+      "owner": "saveMovie",
+      "operations": [
+        "INSERT INTO cinevjet.movies"
+      ]
+    },
+    {
+      "file": "src/server/dashboard.ts",
+      "line": 300,
+      "owner": "saveMovie",
+      "operations": [
+        "UPDATE cinevjet.movies"
+      ]
+    },
+    {
+      "file": "src/server/dashboard.ts",
+      "line": 303,
+      "owner": "saveMovie",
+      "operations": [
+        "DELETE FROM cinevjet.movie_genres"
+      ]
+    },
+    {
+      "file": "src/server/dashboard.ts",
+      "line": 310,
+      "owner": "saveMovie",
+      "operations": [
+        "INSERT INTO cinevjet.genres"
+      ]
+    },
+    {
+      "file": "src/server/dashboard.ts",
+      "line": 313,
+      "owner": "saveMovie",
+      "operations": [
+        "INSERT INTO cinevjet.movie_genres"
+      ]
+    },
+    {
+      "file": "src/server/dashboard.ts",
+      "line": 326,
+      "owner": "saveMovie",
+      "operations": [
+        "UPDATE cinevjet.video_sources"
+      ]
+    },
+    {
+      "file": "src/server/dashboard.ts",
+      "line": 329,
+      "owner": "saveMovie",
+      "operations": [
+        "INSERT INTO cinevjet.video_sources"
+      ]
+    },
+    {
+      "file": "src/server/dashboard.ts",
+      "line": 345,
+      "owner": "saveMovie",
+      "operations": [
+        "UPDATE cinevjet.episodes"
+      ]
+    },
+    {
+      "file": "src/server/dashboard.ts",
+      "line": 357,
+      "owner": "saveMovie",
+      "operations": [
+        "INSERT INTO cinevjet.seasons"
+      ]
+    },
+    {
+      "file": "src/server/dashboard.ts",
+      "line": 360,
+      "owner": "saveMovie",
+      "operations": [
+        "INSERT INTO cinevjet.episodes"
+      ]
+    },
+    {
+      "file": "src/server/dashboard.ts",
+      "line": 370,
+      "owner": "saveMovie",
+      "operations": [
+        "UPDATE cinevjet.video_sources"
+      ]
+    },
+    {
+      "file": "src/server/dashboard.ts",
+      "line": 373,
+      "owner": "saveMovie",
+      "operations": [
+        "INSERT INTO cinevjet.video_sources"
+      ]
+    },
+    {
+      "file": "src/server/dashboard.ts",
+      "line": 390,
+      "owner": "saveMovie",
+      "operations": [
+        "UPDATE cinevjet.movies"
+      ]
+    },
+    {
+      "file": "src/server/dashboard.ts",
+      "line": 415,
+      "owner": "hideMovie",
+      "operations": [
+        "UPDATE cinevjet.movies"
+      ]
+    },
+    {
+      "file": "src/server/dashboard.ts",
+      "line": 449,
+      "owner": "setUserStatus",
+      "operations": [
+        "UPDATE cinevjet.users"
+      ]
+    },
+    {
+      "file": "src/server/dashboard.ts",
+      "line": 453,
+      "owner": "setUserStatus",
+      "operations": [
+        "DELETE FROM cinevjet.sessions"
+      ]
+    },
+    {
+      "file": "src/server/library.ts",
+      "line": 26,
+      "owner": "bookmarkShort",
+      "operations": [
+        "INSERT INTO cinevjet.saved_shorts"
+      ]
+    },
+    {
+      "file": "src/server/library.ts",
+      "line": 39,
+      "owner": "bookmarkShort",
+      "operations": [
+        "DELETE FROM cinevjet.saved_shorts"
+      ]
+    },
+    {
+      "file": "src/server/library.ts",
+      "line": 45,
+      "owner": "removeHistory",
+      "operations": [
+        "DELETE FROM cinevjet.watch_history"
+      ]
+    },
+    {
+      "file": "src/server/manual-money.ts",
+      "line": 103,
+      "owner": "createDepositRequest",
+      "operations": [
+        "INSERT INTO cinevjet.deposits"
+      ]
+    },
+    {
+      "file": "src/server/manual-money.ts",
+      "line": 155,
+      "owner": "createWithdrawalRequest",
+      "operations": [
+        "UPDATE cinevjet.wallets"
+      ]
+    },
+    {
+      "file": "src/server/manual-money.ts",
+      "line": 159,
+      "owner": "createWithdrawalRequest",
+      "operations": [
+        "INSERT INTO cinevjet.withdrawals"
+      ]
+    },
+    {
+      "file": "src/server/manual-money.ts",
+      "line": 289,
+      "owner": "settle",
+      "operations": [
+        "UPDATE cinevjet.withdrawal_jobs"
+      ]
+    },
+    {
+      "file": "src/server/manual-money.ts",
+      "line": 292,
+      "owner": "settle",
+      "operations": [
+        "UPDATE cinevjet.withdrawals"
+      ]
+    },
+    {
+      "file": "src/server/manual-money.ts",
+      "line": 334,
+      "owner": "settle",
+      "operations": [
+        "UPDATE cinevjet.wallets"
+      ]
+    },
+    {
+      "file": "src/server/manual-money.ts",
+      "line": 341,
+      "owner": "settle",
+      "operations": [
+        "UPDATE ${assetTable}"
+      ]
+    },
+    {
+      "file": "src/server/manual-money.ts",
+      "line": 346,
+      "owner": "settle",
+      "operations": [
+        "INSERT INTO cinevjet.coin_ledger"
+      ]
+    },
+    {
+      "file": "src/server/manual-money.ts",
+      "line": 350,
+      "owner": "settle",
+      "operations": [
+        "INSERT INTO cinevjet.wallet_ledger"
+      ]
+    },
+    {
+      "file": "src/server/manual-money.ts",
+      "line": 354,
+      "owner": "settle",
+      "operations": [
+        "UPDATE ${table}"
+      ]
+    },
+    {
+      "file": "src/server/manual-money.ts",
+      "line": 357,
+      "owner": "settle",
+      "operations": [
+        "INSERT INTO cinevjet.money_audit"
+      ]
+    },
+    {
+      "file": "src/server/manual-money.ts",
+      "line": 361,
+      "owner": "settle",
+      "operations": [
+        "UPDATE cinevjet.withdrawal_jobs"
+      ]
+    },
+    {
+      "file": "src/server/missions.ts",
+      "line": 89,
+      "owner": "claimMission",
+      "operations": [
+        "INSERT INTO cinevjet.daily_mission_claims"
+      ]
+    },
+    {
+      "file": "src/server/missions.ts",
+      "line": 92,
+      "owner": "claimMission",
+      "operations": [
+        "UPDATE cinevjet.coin_wallets"
+      ]
+    },
+    {
+      "file": "src/server/missions.ts",
+      "line": 94,
+      "owner": "claimMission",
+      "operations": [
+        "INSERT INTO cinevjet.coin_ledger"
+      ]
+    },
+    {
+      "file": "src/server/missions.ts",
+      "line": 152,
+      "owner": "startRewardWatch",
+      "operations": [
+        "INSERT INTO cinevjet.reward_watch_sessions"
+      ]
+    },
+    {
+      "file": "src/server/missions.ts",
+      "line": 214,
+      "owner": "heartbeatRewardWatch",
+      "operations": [
+        "INSERT INTO cinevjet.daily_watch_progress"
+      ]
+    },
+    {
+      "file": "src/server/missions.ts",
+      "line": 218,
+      "owner": "heartbeatRewardWatch",
+      "operations": [
+        "UPDATE cinevjet.reward_watch_sessions"
+      ]
+    },
+    {
+      "file": "src/server/payos-payments.ts",
+      "line": 67,
+      "owner": "event",
+      "operations": [
+        "INSERT INTO cinevjet.payment_events"
+      ]
+    },
+    {
+      "file": "src/server/payos-payments.ts",
+      "line": 161,
+      "owner": "createPayosOrder",
+      "operations": [
+        "INSERT INTO cinevjet.vip_purchase_requests"
+      ]
+    },
+    {
+      "file": "src/server/payos-payments.ts",
+      "line": 165,
+      "owner": "createPayosOrder",
+      "operations": [
+        "INSERT INTO cinevjet.deposits"
+      ]
+    },
+    {
+      "file": "src/server/payos-payments.ts",
+      "line": 170,
+      "owner": "createPayosOrder",
+      "operations": [
+        "INSERT INTO cinevjet.payos_orders"
+      ]
+    },
+    {
+      "file": "src/server/payos-payments.ts",
+      "line": 219,
+      "owner": "cancelVipPayment",
+      "operations": [
+        "UPDATE cinevjet.vip_purchase_requests"
+      ]
+    },
+    {
+      "file": "src/server/payos-payments.ts",
+      "line": 223,
+      "owner": "cancelVipPayment",
+      "operations": [
+        "UPDATE cinevjet.payos_orders"
+      ]
+    },
+    {
+      "file": "src/server/payos-payments.ts",
+      "line": 313,
+      "owner": "ensurePaymentLink",
+      "operations": [
+        "UPDATE ${legacyTable}"
+      ]
+    },
+    {
+      "file": "src/server/payos-payments.ts",
+      "line": 316,
+      "owner": "ensurePaymentLink",
+      "operations": [
+        "UPDATE cinevjet.payos_orders"
+      ]
+    },
+    {
+      "file": "src/server/payos-payments.ts",
+      "line": 347,
+      "owner": "ensurePaymentLink",
+      "operations": [
+        "UPDATE cinevjet.payos_orders"
+      ]
+    },
+    {
+      "file": "src/server/payos-payments.ts",
+      "line": 419,
+      "owner": "settleVerifiedInfo",
+      "operations": [
+        "UPDATE cinevjet.wallets"
+      ]
+    },
+    {
+      "file": "src/server/payos-payments.ts",
+      "line": 424,
+      "owner": "settleVerifiedInfo",
+      "operations": [
+        "INSERT INTO cinevjet.wallet_ledger"
+      ]
+    },
+    {
+      "file": "src/server/payos-payments.ts",
+      "line": 427,
+      "owner": "settleVerifiedInfo",
+      "operations": [
+        "UPDATE cinevjet.deposits"
+      ]
+    },
+    {
+      "file": "src/server/payos-payments.ts",
+      "line": 432,
+      "owner": "settleVerifiedInfo",
+      "operations": [
+        "UPDATE cinevjet.vip_purchase_requests"
+      ]
+    },
+    {
+      "file": "src/server/payos-payments.ts",
+      "line": 438,
+      "owner": "settleVerifiedInfo",
+      "operations": [
+        "UPDATE ${table}"
+      ]
+    },
+    {
+      "file": "src/server/payos-payments.ts",
+      "line": 450,
+      "owner": "settleVerifiedInfo",
+      "operations": [
+        "UPDATE cinevjet.payos_orders"
+      ]
+    },
+    {
+      "file": "src/server/payos-payments.ts",
+      "line": 508,
+      "owner": "receivePayosWebhook",
+      "operations": [
+        "UPDATE cinevjet.payos_orders"
+      ]
+    },
+    {
+      "file": "src/server/payos-payments.ts",
+      "line": 529,
+      "owner": "reconcilePendingPayments",
+      "operations": [
+        "UPDATE cinevjet.payos_orders"
+      ]
+    },
+    {
+      "file": "src/server/redemption.ts",
+      "line": 113,
+      "owner": "createRedemption",
+      "operations": [
+        "UPDATE cinevjet.coin_wallets"
+      ]
+    },
+    {
+      "file": "src/server/redemption.ts",
+      "line": 119,
+      "owner": "createRedemption",
+      "operations": [
+        "INSERT INTO cinevjet.withdrawals"
+      ]
+    },
+    {
+      "file": "src/server/redemption.ts",
+      "line": 122,
+      "owner": "createRedemption",
+      "operations": [
+        "INSERT INTO cinevjet.withdrawals"
+      ]
+    },
+    {
+      "file": "src/server/reward-codes.ts",
+      "line": 27,
+      "owner": "createRewardCode",
+      "operations": [
+        "INSERT INTO cinevjet.reward_codes"
+      ]
+    },
+    {
+      "file": "src/server/reward-codes.ts",
+      "line": 68,
+      "owner": "redeemRewardCode",
+      "operations": [
+        "INSERT INTO cinevjet.reward_code_redemptions"
+      ]
+    },
+    {
+      "file": "src/server/reward-codes.ts",
+      "line": 72,
+      "owner": "redeemRewardCode",
+      "operations": [
+        "UPDATE cinevjet.reward_codes"
+      ]
+    },
+    {
+      "file": "src/server/reward-codes.ts",
+      "line": 75,
+      "owner": "redeemRewardCode",
+      "operations": [
+        "UPDATE cinevjet.coin_wallets"
+      ]
+    },
+    {
+      "file": "src/server/reward-codes.ts",
+      "line": 78,
+      "owner": "redeemRewardCode",
+      "operations": [
+        "INSERT INTO cinevjet.coin_ledger"
+      ]
+    },
+    {
+      "file": "src/server/reward-risk.ts",
+      "line": 33,
+      "owner": "recordRewardRisk",
+      "operations": [
+        "INSERT INTO cinevjet.auth_limits"
+      ]
+    },
+    {
+      "file": "src/server/reward-risk.ts",
+      "line": 82,
+      "owner": "scrubRewardRiskCounters",
+      "operations": [
+        "UPDATE cinevjet.auth_limits"
+      ]
+    },
+    {
+      "file": "src/server/rewards.ts",
+      "line": 133,
+      "owner": "claimDailyCheckIn",
+      "operations": [
+        "UPDATE cinevjet.vip_checkin_cycles"
+      ]
+    },
+    {
+      "file": "src/server/rewards.ts",
+      "line": 142,
+      "owner": "claimDailyCheckIn",
+      "operations": [
+        "INSERT INTO cinevjet.daily_checkins"
+      ]
+    },
+    {
+      "file": "src/server/rewards.ts",
+      "line": 145,
+      "owner": "claimDailyCheckIn",
+      "operations": [
+        "UPDATE cinevjet.coin_wallets"
+      ]
+    },
+    {
+      "file": "src/server/rewards.ts",
+      "line": 148,
+      "owner": "claimDailyCheckIn",
+      "operations": [
+        "INSERT INTO cinevjet.coin_ledger"
+      ]
+    },
+    {
+      "file": "src/server/rewards.ts",
+      "line": 152,
+      "owner": "claimDailyCheckIn",
+      "operations": [
+        "UPDATE cinevjet.vip_checkin_cycles"
+      ]
+    },
+    {
+      "file": "src/server/rewards.ts",
+      "line": 196,
+      "owner": "openVipCheckinCycleInTransaction",
+      "operations": [
+        "UPDATE cinevjet.vip_checkin_cycles"
+      ]
+    },
+    {
+      "file": "src/server/rewards.ts",
+      "line": 200,
+      "owner": "openVipCheckinCycleInTransaction",
+      "operations": [
+        "INSERT INTO cinevjet.vip_checkin_cycles"
+      ]
+    },
+    {
+      "file": "src/server/short-uploads.ts",
+      "line": 62,
+      "owner": "verifyShortUpload",
+      "operations": [
+        "INSERT INTO cinevjet.short_uploads"
+      ]
+    },
+    {
+      "file": "src/server/social-shorts.ts",
+      "line": 84,
+      "owner": "saveSocialSource",
+      "operations": [
+        "UPDATE cinevjet.short_sources"
+      ]
+    },
+    {
+      "file": "src/server/social-shorts.ts",
+      "line": 88,
+      "owner": "saveSocialSource",
+      "operations": [
+        "INSERT INTO cinevjet.short_sources"
+      ]
+    },
+    {
+      "file": "src/server/social-shorts.ts",
+      "line": 128,
+      "owner": "importSocialUrls",
+      "operations": [
+        "INSERT INTO cinevjet.short_videos"
+      ]
+    },
+    {
+      "file": "src/server/social-shorts.ts",
+      "line": 137,
+      "owner": "persistCheck",
+      "operations": [
+        "UPDATE cinevjet.short_videos"
+      ]
+    },
+    {
+      "file": "src/server/social-shorts.ts",
+      "line": 140,
+      "owner": "persistCheck",
+      "operations": [
+        "UPDATE cinevjet.short_sources"
+      ]
+    },
+    {
+      "file": "src/server/social-shorts.ts",
+      "line": 149,
+      "owner": "checkSocialShort",
+      "operations": [
+        "UPDATE cinevjet.short_videos"
+      ]
+    },
+    {
+      "file": "src/server/social-shorts.ts",
+      "line": 169,
+      "owner": "reviewSocialShort",
+      "operations": [
+        "UPDATE cinevjet.short_videos"
+      ]
+    },
+    {
+      "file": "src/server/social-shorts.ts",
+      "line": 196,
+      "owner": "reviewSocialShort",
+      "operations": [
+        "UPDATE cinevjet.short_videos"
+      ]
+    },
+    {
+      "file": "src/server/social-shorts.ts",
+      "line": 211,
+      "owner": "configureSocialSync",
+      "operations": [
+        "UPDATE cinevjet.short_sync_control"
+      ]
+    },
+    {
+      "file": "src/server/social-shorts.ts",
+      "line": 240,
+      "owner": "runSocialSync",
+      "operations": [
+        "UPDATE cinevjet.short_sync_runs"
+      ]
+    },
+    {
+      "file": "src/server/social-shorts.ts",
+      "line": 243,
+      "owner": "runSocialSync",
+      "operations": [
+        "UPDATE cinevjet.short_sync_control"
+      ]
+    },
+    {
+      "file": "src/server/social-shorts.ts",
+      "line": 246,
+      "owner": "runSocialSync",
+      "operations": [
+        "INSERT INTO cinevjet.short_sync_runs"
+      ]
+    },
+    {
+      "file": "src/server/social-shorts.ts",
+      "line": 315,
+      "owner": "runSocialSync",
+      "operations": [
+        "INSERT INTO cinevjet.short_sync_days"
+      ]
+    },
+    {
+      "file": "src/server/social-shorts.ts",
+      "line": 324,
+      "owner": "runSocialSync",
+      "operations": [
+        "UPDATE cinevjet.short_sync_days"
+      ]
+    },
+    {
+      "file": "src/server/social-shorts.ts",
+      "line": 328,
+      "owner": "runSocialSync",
+      "operations": [
+        "INSERT INTO cinevjet.short_publications"
+      ]
+    },
+    {
+      "file": "src/server/social-shorts.ts",
+      "line": 332,
+      "owner": "runSocialSync",
+      "operations": [
+        "UPDATE cinevjet.short_videos"
+      ]
+    },
+    {
+      "file": "src/server/social-shorts.ts",
+      "line": 369,
+      "owner": "runSocialSync",
+      "operations": [
+        "UPDATE cinevjet.short_sync_runs"
+      ]
+    },
+    {
+      "file": "src/server/social-shorts.ts",
+      "line": 372,
+      "owner": "runSocialSync",
+      "operations": [
+        "UPDATE cinevjet.short_sync_control"
+      ]
+    },
+    {
+      "file": "src/server/system-settings.ts",
+      "line": 120,
+      "owner": "updateSystemSettings",
+      "operations": [
+        "UPDATE cinevjet.system_settings"
+      ]
+    },
+    {
+      "file": "src/server/vip-orders.ts",
+      "line": 40,
+      "owner": "cancelVipOrder",
+      "operations": [
+        "UPDATE cinevjet.vip_purchase_requests"
+      ]
+    },
+    {
+      "file": "src/server/vip-purchases.ts",
+      "line": 138,
+      "owner": "createVipPurchase",
+      "operations": [
+        "INSERT INTO cinevjet.vip_purchase_requests"
+      ]
+    },
+    {
+      "file": "src/server/vip-purchases.ts",
+      "line": 180,
+      "owner": "approveVipPurchase",
+      "operations": [
+        "UPDATE cinevjet.vip_purchase_requests"
+      ]
+    },
+    {
+      "file": "src/server/vip-purchases.ts",
+      "line": 185,
+      "owner": "approveVipPurchase",
+      "operations": [
+        "UPDATE cinevjet.vip_purchase_requests"
+      ]
+    },
+    {
+      "file": "src/server/vip-purchases.ts",
+      "line": 192,
+      "owner": "approveVipPurchase",
+      "operations": [
+        "INSERT INTO cinevjet.money_audit"
+      ]
+    },
+    {
+      "file": "src/server/vip-purchases.ts",
+      "line": 220,
+      "owner": "activateVipPurchaseInTransaction",
+      "operations": [
+        "UPDATE cinevjet.vip_subscriptions"
+      ]
+    },
+    {
+      "file": "src/server/vip-purchases.ts",
+      "line": 225,
+      "owner": "activateVipPurchaseInTransaction",
+      "operations": [
+        "INSERT INTO cinevjet.vip_subscriptions"
+      ]
+    },
+    {
+      "file": "src/server/vip-purchases.ts",
+      "line": 251,
+      "owner": "vipCommissionInTransaction",
+      "operations": [
+        "INSERT INTO cinevjet.referral_commissions"
+      ]
+    },
+    {
+      "file": "src/server/vip-purchases.ts",
+      "line": 255,
+      "owner": "vipCommissionInTransaction",
+      "operations": [
+        "UPDATE cinevjet.wallets"
+      ]
+    },
+    {
+      "file": "src/server/vip-purchases.ts",
+      "line": 258,
+      "owner": "vipCommissionInTransaction",
+      "operations": [
+        "INSERT INTO cinevjet.wallet_ledger"
+      ]
+    },
+    {
+      "file": "src/server/withdrawal-queue.ts",
+      "line": 27,
+      "owner": "payoutAudit",
+      "operations": [
+        "INSERT INTO cinevjet.payout_audit"
+      ]
+    },
+    {
+      "file": "src/server/withdrawal-queue.ts",
+      "line": 47,
+      "owner": "enqueueWithdrawal",
+      "operations": [
+        "INSERT INTO cinevjet.withdrawal_jobs"
+      ]
+    },
+    {
+      "file": "src/server/withdrawal-queue.ts",
+      "line": 85,
+      "owner": "setQueueControl",
+      "operations": [
+        "UPDATE cinevjet.payout_control"
+      ]
+    },
+    {
+      "file": "src/server/withdrawal-queue.ts",
+      "line": 123,
+      "owner": "queueAction",
+      "operations": [
+        "UPDATE cinevjet.withdrawal_jobs"
+      ]
+    },
+    {
+      "file": "src/server/withdrawal-queue.ts",
+      "line": 152,
+      "owner": "claimPayout",
+      "operations": [
+        "UPDATE cinevjet.withdrawal_jobs"
+      ]
+    },
+    {
+      "file": "src/server/withdrawal-queue.ts",
+      "line": 168,
+      "owner": "claimPayout",
+      "operations": [
+        "UPDATE cinevjet.withdrawal_jobs"
+      ]
+    },
+    {
+      "file": "src/server/withdrawal-queue.ts",
+      "line": 177,
+      "owner": "claimPayout",
+      "operations": [
+        "UPDATE cinevjet.payout_control"
+      ]
+    },
+    {
+      "file": "src/server/withdrawal-queue.ts",
+      "line": 180,
+      "owner": "claimPayout",
+      "operations": [
+        "UPDATE cinevjet.withdrawal_jobs"
+      ]
+    },
+    {
+      "file": "src/server/withdrawal-queue.ts",
+      "line": 232,
+      "owner": "settlePayout",
+      "operations": [
+        "UPDATE cinevjet.wallets"
+      ]
+    },
+    {
+      "file": "src/server/withdrawal-queue.ts",
+      "line": 237,
+      "owner": "settlePayout",
+      "operations": [
+        "INSERT INTO cinevjet.wallet_ledger"
+      ]
+    },
+    {
+      "file": "src/server/withdrawal-queue.ts",
+      "line": 240,
+      "owner": "settlePayout",
+      "operations": [
+        "UPDATE cinevjet.withdrawals"
+      ]
+    },
+    {
+      "file": "src/server/withdrawal-queue.ts",
+      "line": 251,
+      "owner": "settlePayout",
+      "operations": [
+        "UPDATE cinevjet.withdrawal_jobs"
+      ]
+    },
+    {
+      "file": "src/server/withdrawal-queue.ts",
+      "line": 276,
+      "owner": "runPayoutWorker",
+      "operations": [
+        "UPDATE cinevjet.withdrawal_jobs"
+      ]
+    },
+    {
+      "file": "src/server/withdrawal-queue.ts",
+      "line": 290,
+      "owner": "runPayoutWorker",
+      "operations": [
+        "UPDATE cinevjet.payout_control"
+      ]
+    }
+  ]
+}

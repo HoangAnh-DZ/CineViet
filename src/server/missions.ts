@@ -7,6 +7,7 @@ import { ApiError } from "./http";
 import { rewardClock, lockCoinWallet } from "./rewards";
 import { verifiedWatchMs, watchDaySegments, WATCH_LEASE_MS } from "@/domain/watch-rewards";
 import type { DailyMissionsState } from "@/domain/models";
+import { recordRewardRisk, type RewardRiskSignal } from "./reward-risk";
 type Executor = Pick<ReturnType<typeof database>, "execute">;
 type Clock = Awaited<ReturnType<typeof rewardClock>>;
 async function snapshot(db: Executor, userId: string, time: Clock): Promise<DailyMissionsState> {
@@ -29,17 +30,19 @@ async function snapshot(db: Executor, userId: string, time: Clock): Promise<Dail
   ).rows[0];
   const watchedMs = Number(progress?.watched_ms || 0);
   const rows = (
-    await db.execute(sql`SELECT m.id,m.target_seconds,c.id AS claim_id
+    await db.execute(sql`SELECT m.id,m.target_seconds,c.id AS claim_id,substring(m.id from '^VIP_[1-6]_TASK_([1-9][0-9]{0,2})$')::int AS ordinal
       FROM cinevjet.daily_missions m
       LEFT JOIN cinevjet.daily_mission_claims c ON c.user_id=${userId} AND c.mission_id=m.id AND c.calendar_date=${time.day}::date
-      WHERE m.enabled AND m.id LIKE ${tier + "_TASK_%"} ORDER BY m.id LIMIT ${count}`)
+      WHERE m.enabled AND split_part(m.id,'_TASK_',1)=${tier}
+        AND substring(m.id from '^VIP_[1-6]_TASK_([1-9][0-9]{0,2})$')::int BETWEEN 1 AND ${count}
+      ORDER BY ordinal LIMIT ${count}`)
   ).rows;
   return {
     calendar_date: time.day,
     timezone: "Asia/Ho_Chi_Minh",
-    missions: rows.map((r, index) => {
+    missions: rows.map((r) => {
       const target = Number(r.target_seconds),
-        required = target * (index + 1);
+        required = target * Number(r.ordinal);
       return {
         id: String(r.id),
         // Each mission uses the same cumulative playback clock. This keeps
@@ -63,7 +66,7 @@ const claimInput = z
   .strict();
 export async function claimMission(userId: string, input: unknown) {
   const data = claimInput.parse(input);
-  return database().transaction(async (tx) => {
+  const result = await database().transaction(async (tx) => {
     await lockCoinWallet(tx, userId);
     const time = await rewardClock(tx);
     if (time.day !== data.calendar_date)
@@ -73,6 +76,15 @@ export async function claimMission(userId: string, input: unknown) {
     if (!mission) throw new ApiError(404, "Nhiệm vụ không khả dụng.");
     if (mission.status === "IN_PROGRESS") throw new ApiError(409, "Chưa đủ thời gian xem hợp lệ.");
     if (mission.status === "CLAIMED") return state;
+    // Old lexicographic selections can contain tasks outside today's contract.
+    // Never rewrite those claims or silently grant an extra daily allowance.
+    const used = (
+      await tx.execute(sql`SELECT count(*)::int n FROM cinevjet.daily_mission_claims
+      WHERE user_id=${userId} AND calendar_date=${time.day}::date
+      AND split_part(mission_id,'_TASK_',1)=split_part(${mission.id},'_TASK_',1)`)
+    ).rows[0];
+    if (Number(used.n) >= state.missions.length)
+      throw new ApiError(409, "Bạn đã nhận đủ nhiệm vụ hôm nay. Vui lòng xem lịch sử xu.");
     const id = randomUUID();
     await tx.execute(sql`INSERT INTO cinevjet.daily_mission_claims(id,user_id,mission_id,calendar_date,reward,created_at)
       VALUES(${id},${userId},${mission.id},${time.day}::date,${mission.reward},${time.now}::timestamptz)`);
@@ -83,6 +95,8 @@ export async function claimMission(userId: string, input: unknown) {
       VALUES(${randomUUID()},${userId},${mission.reward},'MISSION','DAILY_MISSION',${id},${time.now}::timestamptz)`);
     return snapshot(tx, userId, time);
   });
+  await recordRewardRisk(userId, ["mission_claim"]);
+  return result;
 }
 const startInput = z
   .object({
@@ -100,7 +114,7 @@ const beatInput = z
   .strict();
 async function authorizedSource(db: Executor, userId: string, sourceId: string, now: string) {
   const source = (
-    await db.execute(sql`SELECT COALESCE(e.duration_seconds,m.duration_minutes*60)+300 AS max_position
+    await db.execute(sql`SELECT COALESCE(e.duration_seconds,m.duration_seconds,m.duration_minutes*60) AS max_position
     FROM cinevjet.video_sources v JOIN cinevjet.movies m ON m.id=v.movie_id
     LEFT JOIN cinevjet.episodes e ON e.id=v.episode_id AND e.movie_id=m.id
     WHERE v.id=${sourceId} AND v.is_active AND v.format='MP4' AND m.status='PUBLISHED'
@@ -114,61 +128,99 @@ async function authorizedSource(db: Executor, userId: string, sourceId: string, 
 }
 export async function startRewardWatch(userId: string, input: unknown) {
   const data = startInput.parse(input);
-  return database().transaction(async (tx) => {
-    await lockCoinWallet(tx, userId);
-    const time = await rewardClock(tx),
-      max = await authorizedSource(tx, userId, data.source_id, time.now);
-    if (data.position > max) throw new ApiError(400, "Vị trí phát không hợp lệ.");
-    const previous = (
-      await tx.execute(
-        sql`SELECT playing,last_at FROM cinevjet.reward_watch_sessions WHERE user_id=${userId}`,
-      )
-    ).rows[0];
-    if (
-      previous?.playing &&
-      Date.parse(time.now) - new Date(previous.last_at as string).getTime() < WATCH_LEASE_MS
-    )
-      throw new ApiError(409, "Thời gian xem đang được ghi nhận ở một tab khác.");
-    const id = randomUUID(),
-      nonce = randomUUID();
-    await tx.execute(sql`INSERT INTO cinevjet.reward_watch_sessions(user_id,id,source_id,nonce,last_at,position_seconds,playing)
+  const signals: RewardRiskSignal[] = [];
+  try {
+    const result = await database().transaction(async (tx) => {
+      await lockCoinWallet(tx, userId);
+      const time = await rewardClock(tx),
+        max = await authorizedSource(tx, userId, data.source_id, time.now);
+      if (data.position > max) throw new ApiError(400, "Vị trí phát không hợp lệ.");
+      const previous = (
+        await tx.execute(
+          sql`SELECT playing,last_at,source_id FROM cinevjet.reward_watch_sessions WHERE user_id=${userId}`,
+        )
+      ).rows[0];
+      if (
+        previous?.playing &&
+        Date.parse(time.now) - new Date(previous.last_at as string).getTime() < WATCH_LEASE_MS
+      ) {
+        signals.push("session_conflict");
+        throw new ApiError(409, "Thời gian xem đang được ghi nhận ở một tab khác.");
+      }
+      const id = randomUUID(),
+        nonce = randomUUID();
+      await tx.execute(sql`INSERT INTO cinevjet.reward_watch_sessions(user_id,id,source_id,nonce,last_at,position_seconds,playing)
       VALUES(${userId},${id}::uuid,${data.source_id},${nonce}::uuid,${time.now}::timestamptz,${data.position},true)
       ON CONFLICT(user_id) DO UPDATE SET id=excluded.id,source_id=excluded.source_id,nonce=excluded.nonce,
       previous_nonce=NULL,request_hash=NULL,last_at=excluded.last_at,position_seconds=excluded.position_seconds,playing=true`);
-    return { session_id: id, nonce };
-  });
+      signals.push("session_start");
+      if (previous && previous.source_id !== data.source_id) signals.push("source_switch");
+      return { session_id: id, nonce };
+    });
+    return result;
+  } finally {
+    await recordRewardRisk(userId, signals);
+  }
 }
 export async function heartbeatRewardWatch(userId: string, input: unknown) {
   const data = beatInput.parse(input),
     digest = createHash("sha256").update(JSON.stringify(data)).digest("hex");
-  return database().transaction(async (tx) => {
-    await lockCoinWallet(tx, userId);
-    const time = await rewardClock(tx);
-    const s = (
-      await tx.execute(
-        sql`SELECT * FROM cinevjet.reward_watch_sessions WHERE user_id=${userId} AND id=${data.session_id}::uuid`,
+  const signals: RewardRiskSignal[] = [];
+  try {
+    return await database().transaction(async (tx) => {
+      await lockCoinWallet(tx, userId);
+      const time = await rewardClock(tx);
+      const s = (
+        await tx.execute(
+          sql`SELECT * FROM cinevjet.reward_watch_sessions WHERE user_id=${userId} AND id=${data.session_id}::uuid`,
+        )
+      ).rows[0];
+      if (!s) {
+        signals.push("invalid_nonce");
+        throw new ApiError(409, "Phiên theo dõi đã kết thúc.");
+      }
+      const start = new Date(s.last_at as string).getTime(),
+        end = Date.parse(time.now);
+      // Even a valid retry cannot resurrect an expired lease. A fresh start
+      // establishes a new baseline without earning the missing interval.
+      if (end - start >= WATCH_LEASE_MS || end < start) {
+        signals.push("session_expired");
+        throw new ApiError(409, "Phiên theo dõi đã hết hạn. Vui lòng bắt đầu phiên mới.");
+      }
+      if (s.previous_nonce === data.nonce && s.request_hash === digest) {
+        signals.push("retry");
+        return { session_id: String(s.id), nonce: String(s.nonce) };
+      }
+      if (s.nonce !== data.nonce) {
+        signals.push(s.previous_nonce === data.nonce ? "replay_mismatch" : "invalid_nonce");
+        throw new ApiError(409, "Heartbeat không hợp lệ.");
+      }
+      const max = await authorizedSource(tx, userId, String(s.source_id), time.now);
+      const credit = verifiedWatchMs(
+        { at: start, position: Number(s.position_seconds), playing: Boolean(s.playing) },
+        { at: end, position: data.position, playing: data.playing },
+        max,
+      );
+      if (
+        Boolean(s.playing) &&
+        data.playing &&
+        end - start >= 1000 &&
+        (data.position < Number(s.position_seconds) ||
+          data.position - Number(s.position_seconds) > (end - start) / 1000 + 1.5 ||
+          data.position > max + 1.5)
       )
-    ).rows[0];
-    if (!s) throw new ApiError(409, "Phiên theo dõi đã kết thúc.");
-    if (s.previous_nonce === data.nonce && s.request_hash === digest)
-      return { session_id: String(s.id), nonce: String(s.nonce) };
-    if (s.nonce !== data.nonce) throw new ApiError(409, "Heartbeat không hợp lệ.");
-    const max = await authorizedSource(tx, userId, String(s.source_id), time.now);
-    const start = new Date(s.last_at as string).getTime(),
-      end = Date.parse(time.now);
-    const credit = verifiedWatchMs(
-      { at: start, position: Number(s.position_seconds), playing: Boolean(s.playing) },
-      { at: end, position: data.position, playing: data.playing },
-      max,
-    );
-    for (const segment of watchDaySegments(start, end, credit))
-      await tx.execute(sql`INSERT INTO cinevjet.daily_watch_progress(user_id,calendar_date,watched_ms)
+        signals.push("progress_anomaly");
+      for (const segment of watchDaySegments(start, end, credit))
+        await tx.execute(sql`INSERT INTO cinevjet.daily_watch_progress(user_id,calendar_date,watched_ms)
         VALUES(${userId},${segment.day}::date,${segment.ms}) ON CONFLICT(user_id,calendar_date)
         DO UPDATE SET watched_ms=LEAST(86400000,cinevjet.daily_watch_progress.watched_ms+excluded.watched_ms)`);
-    const nonce = randomUUID();
-    await tx.execute(sql`UPDATE cinevjet.reward_watch_sessions SET previous_nonce=nonce,nonce=${nonce}::uuid,
+      const nonce = randomUUID();
+      await tx.execute(sql`UPDATE cinevjet.reward_watch_sessions SET previous_nonce=nonce,nonce=${nonce}::uuid,
       request_hash=${digest},last_at=${time.now}::timestamptz,position_seconds=${data.position},playing=${data.playing && data.position <= max}
       WHERE user_id=${userId}`);
-    return { session_id: String(s.id), nonce };
-  });
+      return { session_id: String(s.id), nonce };
+    });
+  } finally {
+    await recordRewardRisk(userId, signals);
+  }
 }

@@ -44,6 +44,7 @@ export async function PATCH(request: Request) {
     const user = await requireUser();
     const data = z
       .object({ display_name: z.string().trim().min(2).max(80) })
+      .strict()
       .parse(await readBody(request));
     await database().execute(
       sql`UPDATE cinevjet.users SET display_name=${data.display_name},updated_at=now() WHERE id=${user.id}`,

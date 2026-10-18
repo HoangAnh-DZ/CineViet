@@ -1,12 +1,14 @@
 import { z } from "zod";
-export const credentialsSchema = z.object({
-  email: z.string().trim().toLowerCase().max(254).pipe(z.email("Email không hợp lệ.")),
-  password: z
-    .string()
-    .min(8, "Mật khẩu cần ít nhất 8 ký tự.")
-    .refine((s) => new TextEncoder().encode(s).length <= 72, "Mật khẩu tối đa 72 byte."),
-  remember: z.boolean().optional().default(true),
-});
+export const credentialsSchema = z
+  .object({
+    email: z.string().trim().toLowerCase().max(254).pipe(z.email("Email không hợp lệ.")),
+    password: z
+      .string()
+      .min(8, "Mật khẩu cần ít nhất 8 ký tự.")
+      .refine((s) => new TextEncoder().encode(s).length <= 72, "Mật khẩu tối đa 72 byte."),
+    remember: z.boolean().optional().default(true),
+  })
+  .strict();
 export const registrationSchema = credentialsSchema.extend({
   display_name: z.string().trim().min(2, "Tên cần ít nhất 2 ký tự.").max(80),
   verification_challenge: z.string().uuid("Mã xác minh không hợp lệ.").optional(),
@@ -39,28 +41,34 @@ export const registrationFormSchema = registrationRequestSchema
     path: ["confirm_password"],
     message: "Mật khẩu nhập lại không khớp",
   });
-export const registrationChallengeSchema = z.object({
-  id: z.string().uuid(),
-  code: z.string().regex(/^[A-Z0-9]{4}$/),
-});
-export const rewardCodeCreateSchema = z.object({
-  code: z
-    .string()
-    .trim()
-    .toUpperCase()
-    .regex(/^[A-Z0-9-]{6,32}$/)
-    .optional(),
-  reward_coins: z.coerce.number().int().min(1).max(1000000),
-  max_redemptions: z.coerce.number().int().min(1).max(10000000).default(1),
-  expires_at: z.string().datetime().nullable().optional(),
-});
-export const rewardCodeRedeemSchema = z.object({
-  code: z
-    .string()
-    .trim()
-    .toUpperCase()
-    .regex(/^[A-Z0-9-]{6,32}$/),
-});
+export const registrationChallengeSchema = z
+  .object({
+    id: z.string().uuid(),
+    code: z.string().regex(/^[A-Z0-9]{4}$/),
+  })
+  .strict();
+export const rewardCodeCreateSchema = z
+  .object({
+    code: z
+      .string()
+      .trim()
+      .toUpperCase()
+      .regex(/^[A-Z0-9-]{6,32}$/)
+      .optional(),
+    reward_coins: z.coerce.number().int().min(1).max(1000000),
+    max_redemptions: z.coerce.number().int().min(1).max(10000000).default(1),
+    expires_at: z.string().datetime().nullable().optional(),
+  })
+  .strict();
+export const rewardCodeRedeemSchema = z
+  .object({
+    code: z
+      .string()
+      .trim()
+      .toUpperCase()
+      .regex(/^[A-Z0-9-]{6,32}$/),
+  })
+  .strict();
 export const progressSchema = z
   .object({
     movie_id: z.string().min(1).max(100),

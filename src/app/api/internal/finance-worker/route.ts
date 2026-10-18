@@ -4,6 +4,7 @@ import { reconcilePendingPayments } from "@/server/payos-payments";
 import { json, failure, readBody, ApiError } from "@/server/http";
 import { confirmWebhook } from "@/server/payos-client";
 import { payoutAccess, autoPayoutEnabled } from "@/server/payos-payout";
+import { scrubRewardRiskCounters } from "@/server/reward-risk";
 export const runtime = "nodejs";
 export const maxDuration = 60;
 function authorized(request: Request) {
@@ -19,6 +20,10 @@ function authorized(request: Request) {
 export async function GET(request: Request) {
   if (!authorized(request)) return json({ error: "Không có quyền chạy worker." }, 401);
   try {
+    // Retention failures do not block payment reconciliation/dispatch.
+    await scrubRewardRiskCounters().catch(() =>
+      console.error("Reward risk retention unavailable."),
+    );
     return json({ payout: await runPayoutWorker(), payments: await reconcilePendingPayments(2) });
   } catch (e) {
     return failure(e);

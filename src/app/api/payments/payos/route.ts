@@ -12,7 +12,7 @@ export async function GET(request: Request) {
       .min(1)
       .max(80)
       .parse(new URL(request.url).searchParams.get("plan_id"));
-    const order = await pendingVipPayment(u.id, planId);
+    const order = await pendingVipPayment(u.id, planId, true);
     return json({ order: order ? await paymentPresentation(order, u.id) : null });
   } catch (e) {
     return failure(e);

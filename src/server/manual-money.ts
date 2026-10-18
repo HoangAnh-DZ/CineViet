@@ -17,7 +17,8 @@ import { withdrawalQuote } from "@/domain/rules";
 import { withdrawalFee } from "@/domain/product-policy";
 import { enqueueWithdrawal, payoutAudit } from "./withdrawal-queue";
 import { banks } from "./banks";
-import { openBankDetails } from "./bank-secrets";
+import { sealedWithdrawalDestination, withdrawalBankDetails } from "./bank-secrets";
+import { maskBankNumber } from "@/domain/bank-accounts";
 type Executor = Pick<ReturnType<typeof database>, "execute">;
 const date = (v: unknown) => (v ? new Date(v as string).toISOString() : null);
 export function moneyDto(r: Record<string, unknown>, kind: MoneyKind): MoneyRequest {
@@ -117,13 +118,14 @@ export async function createWithdrawalRequest(userId: string, input: unknown) {
     );
     if (old.rows.length) {
       const r = old.rows[0];
+      const oldBank = r.user_id === userId ? await withdrawalBankDetails(r) : null;
       if (
         r.user_id !== userId ||
         Number(r.amount) !== d.amount ||
         r.bank_name !== d.bank_name ||
         r.source_asset !== "VND" ||
-        r.bank_account_number !== d.account_number ||
-        r.bank_account_name !== d.account_name ||
+        oldBank?.account_number !== d.account_number ||
+        oldBank?.account_holder_name !== d.account_name ||
         r.user_note !== d.note
       )
         throw new ApiError(409, "Mã yêu cầu đã được sử dụng.");
@@ -152,8 +154,9 @@ export async function createWithdrawalRequest(userId: string, input: unknown) {
     await tx.execute(
       sql`UPDATE cinevjet.wallets SET reserved=reserved+${quote.amount} WHERE user_id=${userId}`,
     );
+    const id = randomUUID();
     const r = await tx.execute(
-      sql`INSERT INTO cinevjet.withdrawals(id,user_id,amount,fee,destination,idempotency_key,bank_name,bank_account_number,bank_account_name,user_note,updated_at) VALUES(${randomUUID()},${userId},${quote.amount},${quote.fee},${d.bank_name + " / " + d.account_number + " / " + d.account_name},${d.idempotency_key},${d.bank_name},${d.account_number},${d.account_name},${d.note},now()) RETURNING *`,
+      sql`INSERT INTO cinevjet.withdrawals(id,user_id,amount,fee,destination,idempotency_key,bank_name,bank_account_number,user_note,updated_at) VALUES(${id},${userId},${quote.amount},${quote.fee},${await sealedWithdrawalDestination(userId, id, { account_number: d.account_number, account_holder_name: d.account_name })},${d.idempotency_key},${d.bank_name},${maskBankNumber(d.account_number)},${d.note},now()) RETURNING *`,
     );
     const queueState = await enqueueWithdrawal(tx, r.rows[0], d.bank_code);
     return dto({ ...r.rows[0], queue_status: queueState }, "WITHDRAWAL");
@@ -198,11 +201,8 @@ export async function adminMoneyDetail(actor: string, kind: MoneyKind, id: strin
     sql`SELECT state AS action,source AS note,created_at FROM cinevjet.payment_events WHERE order_id=${id} ORDER BY created_at DESC LIMIT 30`,
   );
   const bankSnapshot =
-    kind === "WITHDRAWAL" && r.rows[0].bank_snapshot_ciphertext
-      ? await openBankDetails(
-          String(r.rows[0].bank_snapshot_ciphertext),
-          `withdrawal:${r.rows[0].user_id}:${id}`,
-        )
+    kind === "WITHDRAWAL" && r.rows[0].bank_account_number
+      ? await withdrawalBankDetails(r.rows[0])
       : null;
   return {
     ...dto(r.rows[0], kind),

@@ -1,4 +1,5 @@
 import test from "node:test";
+process.env.BANK_ACCOUNT_ENCRYPTION_KEY = randomBytes(32).toString("base64url");
 import assert from "node:assert/strict";
 import { randomUUID, randomBytes } from "node:crypto";
 import { readFile } from "node:fs/promises";
@@ -15,25 +16,48 @@ import { adminMoneyDetail, completeWithdrawal } from "../src/server/manual-money
 import { runPayoutWorker } from "../src/server/withdrawal-queue";
 import { autoPayoutEnabled } from "../src/server/payos-payout";
 
-// A blank, temporary database on a nonproduction Neon branch. Never use the input URL as-is.
-process.loadEnvFile(".env.local");
+// Prefer the explicitly pinned isolated security QA database. Legacy mode is
+// retained for the original dedicated branch; never run against an input host.
+const securityQa = process.env.SECURITY_TEST_DATABASE_URL;
+if (!securityQa) process.loadEnvFile(".env.local");
 const host = "ep-dawn-boat-b3eq3mnu-pooler.c-4.ap-southeast-1.aws.neon.tech";
-const url = new URL(process.env.DATABASE_URL!);
-assert.notEqual(url.hostname, host);
-url.hostname = host;
-url.pathname = "/financial_sync_qa_20261015";
+const url = new URL(securityQa || process.env.DATABASE_URL!);
+if (securityQa) {
+  assert.equal(url.hostname, "ep-late-credit-b3qu4dqn.c-4.ap-southeast-1.aws.neon.tech");
+  assert.equal(url.pathname, "/security_audit_20261018");
+} else {
+  assert.notEqual(url.hostname, host);
+  url.hostname = host;
+  url.pathname = "/financial_sync_qa_20261015";
+}
 process.env.DATABASE_URL = url.toString();
 process.env.AUTH_SECRET = randomBytes(48).toString("base64url");
 for (const key of Object.keys(process.env)) if (key.startsWith("PAYOS_")) delete process.env[key];
-const migrated = spawnSync(process.execPath, ["scripts/migrate.mjs"], {
-  env: process.env,
-  encoding: "utf8",
-});
-assert.equal(migrated.status, 0, migrated.stderr);
+if (!securityQa) {
+  const migrated = spawnSync(process.execPath, ["scripts/migrate.mjs"], {
+    env: process.env,
+    encoding: "utf8",
+  });
+  assert.equal(migrated.status, 0, migrated.stderr);
+}
 const pool = new Pool({ ...pgConfig(), max: 10 });
+let runtimePool: Pool | undefined;
+if (securityQa) {
+  const role = process.env.SECURITY_QA_RUNTIME_ROLE;
+  assert.equal(role, "cinevjet_runtime_review_20261018");
+  assert.ok(
+    (
+      await pool.query(
+        "SELECT 1 FROM information_schema.tables WHERE table_schema='cinevjet' AND table_name='withdrawals'",
+      )
+    ).rows.length,
+  );
+  runtimePool = new Pool({ ...pgConfig(), max: 10, options: `-c role=${role}` });
+  assert.equal((await runtimePool.query("SELECT current_user AS name")).rows[0].name, role);
+}
 (
   globalThis as typeof globalThis & { cinevjetDatabase: ReturnType<typeof drizzle> }
-).cinevjetDatabase = drizzle(pool);
+).cinevjetDatabase = drizzle(runtimePool || pool);
 await pool.query(await readFile("database/seed.sql", "utf8"));
 await pool.query(
   "UPDATE cinevjet.vip_plans SET reward_tier='FREE',checkin_rewards=ARRAY[200,300,500,700,1000,1300,2000],reward_enabled=true WHERE id='FREE'",
@@ -277,5 +301,6 @@ test("real PostgreSQL: code → two holds → admin → reload → reject → ev
   );
 });
 test.after(async () => {
+  if (runtimePool) await runtimePool.end();
   await pool.end();
 });

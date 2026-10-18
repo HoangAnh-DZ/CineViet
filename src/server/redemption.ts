@@ -11,7 +11,11 @@ import { validWithdrawalSelection, withdrawalFee } from "@/domain/product-policy
 import { redemptionInput } from "@/domain/money";
 import { savedRedemptionInput, maskBankNumber } from "@/domain/bank-accounts";
 import { savedBankAccountDetails } from "./bank-accounts";
-import { sealBankDetails } from "./bank-secrets";
+import {
+  sealBankDetails,
+  sealedWithdrawalDestination,
+  withdrawalBankDetails,
+} from "./bank-secrets";
 export async function redemptionSnapshot(userId: string) {
   const row = (
     await database().execute(
@@ -57,6 +61,10 @@ export async function createRedemption(userId: string, input: unknown) {
       )
     ).rows[0];
     if (old) {
+      const oldBank =
+        old.user_id === userId && !("bank_account_id" in d)
+          ? await withdrawalBankDetails(old)
+          : null;
       if (
         old.user_id !== userId ||
         old.source_asset !== "COIN" ||
@@ -65,8 +73,8 @@ export async function createRedemption(userId: string, input: unknown) {
           ? old.bank_account_id !== d.bank_account_id
           : old.bank_account_id ||
             old.bank_name !== d.bank_name ||
-            old.bank_account_number !== d.account_number ||
-            old.bank_account_name !== d.account_name) ||
+            oldBank?.account_number !== d.account_number ||
+            oldBank?.account_holder_name !== d.account_name) ||
         old.user_note !== d.note
       )
         throw new ApiError(409, "Mã yêu cầu đã được sử dụng.");
@@ -111,7 +119,7 @@ export async function createRedemption(userId: string, input: unknown) {
             sql`INSERT INTO cinevjet.withdrawals(id,user_id,amount,fee,destination,idempotency_key,bank_name,bank_account_number,user_note,source_asset,coins_amount,coin_value_vnd,updated_at,bank_account_id,bank_snapshot_ciphertext) VALUES(${id},${userId},${quote.amount},${quote.fee},${recipient.bank_name + " / " + maskBankNumber(recipient.account_number)},${d.idempotency_key},${recipient.bank_name},${maskBankNumber(recipient.account_number)},${d.note},'COIN',${d.coins},${COIN_VALUE_VND},now(),${d.bank_account_id},${await sealBankDetails(recipient, `withdrawal:${userId}:${id}`)}) RETURNING *`,
           )
         : await tx.execute(
-            sql`INSERT INTO cinevjet.withdrawals(id,user_id,amount,fee,destination,idempotency_key,bank_name,bank_account_number,bank_account_name,user_note,source_asset,coins_amount,coin_value_vnd,updated_at) VALUES(${id},${userId},${quote.amount},${quote.fee},${recipient.bank_name + " / " + recipient.account_number + " / " + recipient.account_holder_name},${d.idempotency_key},${recipient.bank_name},${recipient.account_number},${recipient.account_holder_name},${d.note},'COIN',${d.coins},${COIN_VALUE_VND},now()) RETURNING *`,
+            sql`INSERT INTO cinevjet.withdrawals(id,user_id,amount,fee,destination,idempotency_key,bank_name,bank_account_number,user_note,source_asset,coins_amount,coin_value_vnd,updated_at) VALUES(${id},${userId},${quote.amount},${quote.fee},${await sealedWithdrawalDestination(userId, id, recipient)},${d.idempotency_key},${recipient.bank_name},${maskBankNumber(recipient.account_number)},${d.note},'COIN',${d.coins},${COIN_VALUE_VND},now()) RETURNING *`,
           );
     return moneyDto(r.rows[0], "WITHDRAWAL");
   });

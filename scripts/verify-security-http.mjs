@@ -15,9 +15,17 @@ const pool = new Pool({
   ssl: { rejectUnauthorized: true },
   max: 2,
 });
-const role = "cinevjet_runtime_security_20261018";
+const role = process.env.SECURITY_QA_RUNTIME_ROLE || "cinevjet_runtime_security_20261018";
+assert.ok(
+  ["cinevjet_runtime_security_20261018", "cinevjet_runtime_review_20261018"].includes(role),
+);
 const policy = fs
-  .readFileSync("database/security/runtime-role.sql", "utf8")
+  .readFileSync(
+    role.includes("_review_")
+      ? "database/security/runtime-role-candidate.sql"
+      : "database/security/runtime-role.sql",
+    "utf8",
+  )
   .replaceAll("cinevjet_runtime", role);
 await pool.query(policy.slice(policy.indexOf("GRANT USAGE ON SCHEMA")).replace("COMMIT;", ""));
 url.searchParams.set("options", `-c role=${role}`);
@@ -54,6 +62,7 @@ const child = spawn(
       VERCEL_ENV: "development",
       DATABASE_URL: url.toString(),
       AUTH_SECRET: secret,
+      BANK_ACCOUNT_ENCRYPTION_KEY: randomBytes(32).toString("base64url"),
       NEXT_PUBLIC_APP_URL: base,
       PAYOS_CLIENT_ID: "",
       PAYOS_API_KEY: "",
@@ -115,6 +124,94 @@ try {
   );
   const cookie = session.split(";")[0];
   checks += 2;
+  // Synthetic pending orders only; GET cannot call a provider or settle money.
+  const orderA = randomUUID(),
+    orderB = randomUUID();
+  for (const [id, owner] of [
+    [orderA, a],
+    [orderB, b],
+  ]) {
+    await pool.query(
+      "INSERT INTO cinevjet.deposits(id,user_id,amount,provider,idempotency_key)VALUES($1,$2,50000,'PAYOS',$3)",
+      [id, owner, randomUUID()],
+    );
+    await pool.query(
+      "INSERT INTO cinevjet.payos_orders(id,user_id,kind,deposit_id,amount,idempotency_key,status,return_url,cancel_url,expires_at)VALUES($1,$2,'DEPOSIT',$1,50000,$3,'PENDING',$4,$4,now()+interval '30 minutes')",
+      [id, owner, randomUUID(), base],
+    );
+  }
+  const financialBefore = (
+    await pool.query("SELECT balance::text,reserved::text FROM cinevjet.wallets WHERE user_id=$1", [
+      a,
+    ])
+  ).rows[0];
+  const projection = await request(`/api/payments/payos/${orderA}`, "GET", undefined, cookie);
+  assert.equal(projection.status, 200);
+  assert.equal((await projection.json()).status, "PENDING");
+  assert.equal(
+    (await request(`/api/payments/payos/${orderB}`, "GET", undefined, cookie)).status,
+    404,
+  );
+  assert.equal(
+    (
+      await request(
+        `/api/payments/payos/${orderA}`,
+        "POST",
+        { action: "reconcile" },
+        cookie,
+        "https://evil.invalid",
+      )
+    ).status,
+    403,
+  );
+  assert.equal(
+    (
+      await request(
+        `/api/payments/payos/${orderA}`,
+        "POST",
+        { action: "reconcile", status: "PAID", balance: 99999999, vip_expires_at: "2099-01-01" },
+        cookie,
+      )
+    ).status,
+    400,
+  );
+  assert.equal(
+    (await request(`/api/payments/payos/${orderB}`, "POST", { action: "reconcile" }, cookie))
+      .status,
+    404,
+  );
+  assert.equal(
+    (await request(`/api/payments/payos/${orderA}`, "POST", { action: "reconcile" })).status,
+    401,
+  );
+  assert.deepEqual(
+    (
+      await pool.query(
+        "SELECT balance::text,reserved::text FROM cinevjet.wallets WHERE user_id=$1",
+        [a],
+      )
+    ).rows[0],
+    financialBefore,
+  );
+  assert.equal(
+    (
+      await pool.query(
+        "SELECT count(*)::int n FROM cinevjet.wallet_ledger WHERE reference_id IN ($1,$2)",
+        [orderA, orderB],
+      )
+    ).rows[0].n,
+    0,
+  );
+  assert.equal(
+    (
+      await pool.query(
+        "SELECT count(*)::int n FROM cinevjet.payos_orders WHERE id IN ($1,$2) AND status='PENDING' AND settled_at IS NULL",
+        [orderA, orderB],
+      )
+    ).rows[0].n,
+    2,
+  );
+  checks += 9;
   const inventory = securityInventory();
   for (const route of inventory.routes.filter((r) => r.path.startsWith("/api/admin/"))) {
     const path = route.path.replace("[kind]", "WITHDRAWAL").replaceAll("[id]", randomUUID());
@@ -216,7 +313,7 @@ try {
     },
     cookie,
   );
-  assert.equal(patched.status, 200);
+  assert.equal(patched.status, 400);
   const actual = (await pool.query("SELECT display_name FROM cinevjet.users WHERE id=$1", [b]))
     .rows[0];
   assert.equal(actual.display_name, "HTTP security test");
@@ -309,6 +406,58 @@ try {
     assert.equal((await request(path + ".map")).status, 404);
     checks++;
   }
+  const accountNumber = "009876543210";
+  const redemption = await request(
+    "/api/rewards/redemptions",
+    "POST",
+    {
+      coins: 35000,
+      bank_name: "QA BANK",
+      account_number: accountNumber,
+      account_name: "QA PRIVATE HOLDER",
+      idempotency_key: randomUUID(),
+    },
+    cookie,
+  );
+  assert.equal(redemption.status, 201);
+  const redeemed = await redemption.json();
+  assert.equal(redeemed.bank_account_number, "••••3210");
+  assert.equal(redeemed.bank_account_name, null);
+  checks += 3;
+  const stored = (
+    await pool.query(
+      "SELECT destination,bank_account_number,bank_account_name FROM cinevjet.withdrawals WHERE id=$1",
+      [redeemed.id],
+    )
+  ).rows[0];
+  assert.ok(stored.destination.startsWith("bank-snapshot:v1:"));
+  assert.ok(!JSON.stringify(stored).includes(accountNumber));
+  checks += 2;
+  const businessDay = (
+    await pool.query(
+      "SELECT (cinevjet.reward_now() AT TIME ZONE 'Asia/Ho_Chi_Minh')::date::text AS day_text",
+    )
+  ).rows[0].day_text;
+  for (const calendar_date of ["1999-01-01", "2099-01-01"]) {
+    const response = await request(
+      "/api/rewards",
+      "POST",
+      { calendar_date, timezone: "America/Los_Angeles", reward: 999999999, now: "2099-01-01" },
+      cookie,
+    );
+    assert.equal(response.status, 400);
+    checks++;
+  }
+  const validCheckin = await request("/api/rewards", "POST", {}, cookie);
+  assert.equal(validCheckin.status, 200);
+  assert.equal((await validCheckin.json()).calendar_date, businessDay);
+  checks++;
+  assert.equal(
+    (await pool.query("SELECT count(*)::int n FROM cinevjet.daily_checkins WHERE user_id=$1", [a]))
+      .rows[0].n,
+    1,
+  );
+  checks++;
   const key = createHmac("sha256", secret).update("auth:ip:local").digest("hex");
   await pool.query(
     "INSERT INTO cinevjet.auth_limits(key,attempts,window_start)VALUES($1,61,now()) ON CONFLICT(key)DO UPDATE SET attempts=61,window_start=now()",

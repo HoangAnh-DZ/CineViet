@@ -1,4 +1,5 @@
 import "server-only";
+import { withdrawalBankDetails } from "./bank-secrets";
 import { randomUUID } from "node:crypto";
 import { sql } from "drizzle-orm";
 import { z } from "zod";
@@ -142,7 +143,7 @@ export async function claimPayout(reconcileOnly = false) {
     // Oldest unresolved dispatch blocks later sends. Expired leases reconcile rather than resubmit.
     const j = (
       await tx.execute(
-        sql`SELECT j.*,w.amount,w.fee,w.bank_account_number,w.user_id,w.status AS withdrawal_status,u.status AS user_status FROM cinevjet.withdrawal_jobs j JOIN cinevjet.withdrawals w ON w.id=j.withdrawal_id JOIN cinevjet.users u ON u.id=w.user_id WHERE w.source_asset='VND' AND ${reconcileOnly ? sql`j.status IN ('PROCESSING','SUBMITTED','NEEDS_RECONCILIATION')` : sql`j.status IN ('QUEUED','PROCESSING','SUBMITTED','RETRY_WAIT','NEEDS_RECONCILIATION')`} ORDER BY j.created_at,j.withdrawal_id LIMIT 1 FOR UPDATE OF j SKIP LOCKED`,
+        sql`SELECT j.*,w.amount,w.fee,w.bank_account_number,w.bank_account_name,w.bank_snapshot_ciphertext,w.destination,w.user_id,w.status AS withdrawal_status,u.status AS user_status FROM cinevjet.withdrawal_jobs j JOIN cinevjet.withdrawals w ON w.id=j.withdrawal_id JOIN cinevjet.users u ON u.id=w.user_id WHERE w.source_asset='VND' AND ${reconcileOnly ? sql`j.status IN ('PROCESSING','SUBMITTED','NEEDS_RECONCILIATION')` : sql`j.status IN ('QUEUED','PROCESSING','SUBMITTED','RETRY_WAIT','NEEDS_RECONCILIATION')`} ORDER BY j.created_at,j.withdrawal_id LIMIT 1 FOR UPDATE OF j SKIP LOCKED`,
       )
     ).rows[0];
     if (!j || new Date(j.next_attempt_at as string).getTime() > now) return null;
@@ -169,6 +170,7 @@ export async function claimPayout(reconcileOnly = false) {
         return null;
       }
     }
+    const recipient = await withdrawalBankDetails({ ...j, id: j.withdrawal_id });
     const token = randomUUID(),
       reconcile = !["QUEUED", "RETRY_WAIT"].includes(String(j.status));
     await tx.execute(
@@ -184,6 +186,7 @@ export async function claimPayout(reconcileOnly = false) {
     );
     return {
       ...j,
+      bank_account_number: recipient.account_number,
       token,
       reconcile,
       attempts: Number(j.attempts) + (reconcile ? 0 : 1),

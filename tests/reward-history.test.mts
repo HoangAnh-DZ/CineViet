@@ -1,6 +1,7 @@
 import test from "node:test";
+process.env.BANK_ACCOUNT_ENCRYPTION_KEY = randomBytes(32).toString("base64url");
 import assert from "node:assert/strict";
-import { randomUUID } from "node:crypto";
+import { randomUUID, randomBytes } from "node:crypto";
 import { readFile, readdir } from "node:fs/promises";
 import { PGlite } from "@electric-sql/pglite";
 import { drizzle } from "drizzle-orm/pglite";
@@ -9,12 +10,12 @@ import { createRedemption, redemptionHistory } from "../src/server/redemption";
 import { userMoneyRequests } from "../src/server/manual-money";
 // Disposable local SQL database; no expired branch or production credentials required.
 const pool = new PGlite();
-for (const name of (await readdir("database/migrations")).filter(n=>n.endsWith(".sql")).sort())
+for (const name of (await readdir("database/migrations")).filter((n) => n.endsWith(".sql")).sort())
   await pool.exec(await readFile(`database/migrations/${name}`, "utf8"));
 await pool.exec(await readFile("database/seed.sql", "utf8"));
-(
-  globalThis as typeof globalThis & { cinevjetDatabase: NodePgDatabase }
-).cinevjetDatabase = drizzle(pool) as unknown as NodePgDatabase;
+(globalThis as typeof globalThis & { cinevjetDatabase: NodePgDatabase }).cinevjetDatabase = drizzle(
+  pool,
+) as unknown as NodePgDatabase;
 test("History filters each asset before limiting rows", async () => {
   const u = randomUUID();
   await pool.query(

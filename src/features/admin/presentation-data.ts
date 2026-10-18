@@ -5,6 +5,7 @@ import { assertAdmin } from "@/server/admin-core";
 import { adminMovies, adminUsers, type AdminUser } from "@/server/dashboard";
 import { history, coinLedger } from "@/server/account";
 import { ApiError } from "@/server/http";
+import { rewardRiskSummary } from "@/server/reward-risk";
 // Read-only projections for dashboard columns. Existing repositories and mutations stay unchanged.
 export async function moviePresentation(actor: string, q = "", type = "", status = "", page = 1) {
   const batch = await adminMovies(actor, q, type, status, page);
@@ -49,7 +50,7 @@ export async function memberActivity(actor: string, id: string) {
   await assertAdmin(actor);
   const exists = await database().execute(sql`SELECT id FROM cinevjet.users WHERE id=${id}`);
   if (!exists.rows.length) throw new ApiError(404, "Thành viên không tồn tại.");
-  const [watch, rewards, transactions, money] = await Promise.all([
+  const [watch, rewards, transactions, money, rewardRisk] = await Promise.all([
     history(id),
     coinLedger(id),
     database().execute(
@@ -58,8 +59,10 @@ export async function memberActivity(actor: string, id: string) {
     database().execute(
       sql`SELECT w.balance,w.reserved,COALESCE(c.balance,0) AS coins,COALESCE(c.reserved,0) AS reserved_coins,(SELECT COALESCE(sum(amount),0) FROM cinevjet.deposits WHERE user_id=${id} AND status='COMPLETED') AS deposited,(SELECT COALESCE(sum(amount),0) FROM cinevjet.withdrawals WHERE user_id=${id} AND status='COMPLETED' AND source_asset='VND') AS withdrawn,(SELECT count(*) FROM cinevjet.deposits WHERE user_id=${id} AND status='PENDING') AS pending_deposits,(SELECT count(*) FROM cinevjet.withdrawals WHERE user_id=${id} AND status='PENDING' AND source_asset='VND') AS pending_withdrawals,(SELECT count(*) FROM cinevjet.withdrawals WHERE user_id=${id} AND status='PENDING' AND source_asset='COIN') AS pending_redemptions FROM cinevjet.wallets w LEFT JOIN cinevjet.coin_wallets c ON c.user_id=w.user_id WHERE w.user_id=${id}`,
     ),
+    rewardRiskSummary(actor, id),
   ]);
   return {
+    reward_risk: rewardRisk,
     money: {
       balance: Number(money.rows[0]?.balance || 0),
       reserved: Number(money.rows[0]?.reserved || 0),

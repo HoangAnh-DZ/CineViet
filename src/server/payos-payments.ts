@@ -173,17 +173,26 @@ export async function createPayosOrder(
   });
   return ensurePaymentLink(String(row.id), userId);
 }
-export async function pendingVipPayment(userId: string, planId: string) {
+export async function pendingVipPayment(userId: string, planId: string, readOnly = false) {
   const r = (
     await database().execute(
       sql`SELECT * FROM cinevjet.payos_orders WHERE user_id=${userId} AND kind='VIP_PURCHASE' AND plan_id=${planId} AND status IN ('CREATING','PENDING','UNDERPAID','PROCESSING') ORDER BY created_at DESC LIMIT 1`,
     )
   ).rows[0];
   return r
-    ? new Date(String(r.expires_at)).getTime() <= Date.now()
+    ? !readOnly && new Date(String(r.expires_at)).getTime() <= Date.now()
       ? await cancelVipPayment(String(r.id), userId, true)
       : dto(r)
     : null;
+}
+export async function storedPayosOrder(id: string, userId: string) {
+  const row = (
+    await database().execute(
+      sql`SELECT * FROM cinevjet.payos_orders WHERE id=${id} AND user_id=${userId}`,
+    )
+  ).rows[0];
+  if (!row) throw new ApiError(404, "Đơn thanh toán không tồn tại.");
+  return dto(row);
 }
 export async function cancelVipPayment(
   id: string,

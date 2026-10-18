@@ -29,6 +29,8 @@ export function usePayosPayment(id: string | null, initial: PayosOrder | null = 
     }, 20000);
     try {
       const next = await requestJson<PayosOrder>(`/api/payments/payos/${encodeURIComponent(id)}`, {
+        method: "POST",
+        body: JSON.stringify({ action: "reconcile" }),
         signal: controller.signal,
       });
       if (controller.signal.aborted || !active.current) return;
